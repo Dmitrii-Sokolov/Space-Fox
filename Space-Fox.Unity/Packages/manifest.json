@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "com.svermeulen.extenject": "https://github.com/starikcetin/Extenject.git#upm",
     "com.unity.2d.sprite": "1.0.0",
     "com.unity.addressables": "1.21.19",
     "com.unity.cinemachine": "2.9.7",
