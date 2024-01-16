@@ -243,7 +243,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 07bc26f083072614dabf2ab3224e529a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  mFillRect: {fileID: 2637822249362035573}
+  FillRect: {fileID: 2637822249362035573}
 --- !u!1 &6955359357031281451
 GameObject:
   m_ObjectHideFlags: 0

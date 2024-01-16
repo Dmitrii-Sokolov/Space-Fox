@@ -46,18 +46,14 @@ namespace SpaceFox
             => MemorableObserversComposer.Subscribe(observer);
 
         public IDisposable Subscribe(IObserver<T> observer)
-        {
-            observer.OnNext(Value);
-
-            return Subscribe(observer, false);
-        }
+            => Subscribe(observer, true);
 
         public IDisposable Subscribe(IObserver<T> observer, bool invokeOnSubscribtion = true)
         {
             if (invokeOnSubscribtion)
                 observer.OnNext(Value);
 
-            return Subscribe(observer);
+            return ObserversComposer.Subscribe(observer);
         }
 
         public void Dispose()
