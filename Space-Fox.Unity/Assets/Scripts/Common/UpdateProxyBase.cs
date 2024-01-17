@@ -3,9 +3,9 @@ using UnityEngine;
 
 namespace SpaceFox
 {
-    public class UpdateProxy : MonoBehaviour
+    public abstract class UpdateProxyBase : MonoBehaviour
     {
-        private class Updater : ISubscriptionProvider
+        protected class Updater : ISubscriptionProvider
         {
             private event Action UpdateEvent;
 
@@ -20,13 +20,9 @@ namespace SpaceFox
                 => UpdateEvent?.Invoke();
         }
 
-        private Updater UpdateEvent = new();
-        private Updater LateUpdateEvent = new();
-        private Updater FixedUpdateEvent = new();
-
-        public ISubscriptionProvider OnUpdate => UpdateEvent;
-        public ISubscriptionProvider OnLateUpdate => LateUpdateEvent;
-        public ISubscriptionProvider OnFixedUpdate => FixedUpdateEvent;
+        protected Updater UpdateEvent = new();
+        protected Updater LateUpdateEvent = new();
+        protected Updater FixedUpdateEvent = new();
 
         private void Update()
             => UpdateEvent?.Invoke();
