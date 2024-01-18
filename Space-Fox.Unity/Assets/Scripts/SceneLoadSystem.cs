@@ -1,7 +1,7 @@
-﻿using UnityEngine;
-using UnityEngine.AddressableAssets;
+﻿using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.AsyncOperations;
 using UnityEngine.ResourceManagement.ResourceProviders;
+using UnityEngine.SceneManagement;
 using Zenject;
 
 namespace SpaceFox
@@ -36,23 +36,27 @@ namespace SpaceFox
         public IReadOnlyObservableValue<SceneLoadingState> State => LoadingState;
         public IReadOnlyObservableValue<AssetReference> Scene => CurrentScene;
 
-        public void Initialize(string currentSceneName)
+        private bool Initialized => Scene.Value != null;
+
+        public void Initialize(Scene currentScene)
         {
+            if (Initialized)
+                return;
+
+#if UNITY_EDITOR
             foreach (var scene in ScenesList.Scenes)
             {
-                //TODO Check this in build
-                if (scene.editorAsset.name == currentSceneName)
+                if (scene.editorAsset.name == currentScene.name)
                 {
                     CurrentScene.Value = scene;
                     LoadingState.Value = SceneLoadingState.Loaded;
                     return;
                 }
             }
+#endif
 
             LoadScene(ScenesList.MainScene);
         }
-
-        //TODO Public method for loading scene by key
 
         private async void LoadScene(AssetReference scene)
         {
