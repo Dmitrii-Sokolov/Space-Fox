@@ -9,8 +9,12 @@ namespace SpaceFox
 
         [SerializeField] private SimpleProgressBar SimpleProgressBar = default;
 
-        private void Awake()
-            => SceneLoadSystem.State.Subscribe(OnSceneLoading).While(this);
+        protected override void AwakeBeforeDestroy()
+        {
+            base.AwakeBeforeDestroy();
+
+            SceneLoadSystem.State.Subscribe(OnSceneLoading).While(this);
+        }
 
         private void OnSceneLoading(SceneLoadSystem.SceneLoadingState state)
         {
