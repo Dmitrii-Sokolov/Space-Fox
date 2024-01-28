@@ -1,4 +1,5 @@
 ﻿using UnityEngine;
+using Zenject;
 
 namespace SpaceFox
 {
@@ -6,24 +7,16 @@ namespace SpaceFox
     [RequireComponent(typeof(MeshRenderer))]
     public class PlaneTerrainMeshChunk : MonoBehaviour
     {
-        //TODO Add scaling, not 1 quad = 1 unit
-        private const int ChunkSize = 64;
+        private const int QuadCount = 64;
+        private const float QuadSize = ChunkSize / QuadCount;
 
-        //TODO Check x and y axes ordering
-        private readonly float[,] HeightMap = new float[ChunkSize + 1, ChunkSize + 1];
+        public const float ChunkSize = 16f;
+
+        [Inject] private readonly PlaneHeightProvider HeightProvider = default;
 
         private void Awake()
         {
             var mesh = new Mesh();
-
-            //TODO Separete generator class, Scriptable Object with settings
-            for (var x = 0; x < ChunkSize + 1; x++)
-            {
-                for (var y = 0; y < ChunkSize + 1; y++)
-                {
-                    HeightMap[x, y] = ChunkSize * Mathf.PerlinNoise(x * 1f / ChunkSize, y * 1f / ChunkSize);
-                }
-            }
 
             mesh.vertices = GenerateVertices();
             mesh.triangles = GenerateTriangles();
@@ -36,13 +29,18 @@ namespace SpaceFox
 
         private Vector3[] GenerateVertices()
         {
-            var vertices = new Vector3[(ChunkSize + 1) * (ChunkSize + 1)];
+            var vertices = new Vector3[(QuadCount + 1) * (QuadCount + 1)];
 
-            for (var x = 0; x < ChunkSize + 1; x++)
+            for (var iy = 0; iy < QuadCount + 1; iy++)
             {
-                for (var y = 0; y < ChunkSize + 1; y++)
+                for (var ix = 0; ix < QuadCount + 1; ix++)
                 {
-                    vertices[GetVertexNumber(x, y)] = new Vector3(x, HeightMap[x, y], y);
+                    //This can be simplified for performance
+                    var gridPosition = GetLocalVertexPosition(ix, iy);
+                    var position = transform.TransformPoint(gridPosition);
+                    var positionY = HeightProvider.GetHeight(position.x, position.z);
+                    var localPosition = transform.InverseTransformPoint(position.x, positionY, position.z);
+                    vertices[GetVertexNumber(ix, iy)] = localPosition;
                 }
             }
 
@@ -51,31 +49,59 @@ namespace SpaceFox
 
         private int[] GenerateTriangles()
         {
-            var triangles = new int[ChunkSize * ChunkSize * 6];
+            var triangles = new int[QuadCount * QuadCount * 6];
 
-            for (var x = 0; x < ChunkSize; x++)
+            for (var iy = 0; iy < QuadCount; iy++)
             {
-                for (var y = 0; y < ChunkSize; y++)
+                for (var ix = 0; ix < QuadCount; ix++)
                 {
-                    var quadNumber = GetQuadNumber(x, y);
+                    var quadNumber = GetQuadNumber(ix, iy);
+                    var isOdd = (ix + iy) % 2 == 0;
 
-                    triangles[6 * quadNumber + 0] = GetVertexNumber(x, y);
-                    triangles[6 * quadNumber + 1] = GetVertexNumber(x, y + 1);
-                    triangles[6 * quadNumber + 2] = GetVertexNumber(x + 1, y);
+                    (triangles[6 * quadNumber + 0],
+                        triangles[6 * quadNumber + 1],
+                        triangles[6 * quadNumber + 2]) = isOdd
+                        ? GetTriangleLeftBottom(ix, iy)
+                        : GetTriangleRightBottom(ix, iy);
 
-                    triangles[6 * quadNumber + 3] = GetVertexNumber(x + 1, y);
-                    triangles[6 * quadNumber + 4] = GetVertexNumber(x, y + 1);
-                    triangles[6 * quadNumber + 5] = GetVertexNumber(x + 1, y + 1);
+                    (triangles[6 * quadNumber + 3],
+                        triangles[6 * quadNumber + 4],
+                        triangles[6 * quadNumber + 5]) = isOdd
+                        ? GetTriangleRightTop(ix, iy)
+                        : GetTriangleLeftTop(ix, iy);
                 }
             }
 
             return triangles;
         }
 
+        private static Vector3 GetLocalVertexPosition(int ix, int iy)
+            => new(ix * QuadSize - 0.5f * ChunkSize, 0f, iy * QuadSize - 0.5f * ChunkSize);
+
         private static int GetQuadNumber(int x, int y)
-            => ChunkSize * x + y;
+            => x + QuadCount * y;
 
         private static int GetVertexNumber(int x, int y)
-            => (ChunkSize + 1) * x + y;
+            => x + (QuadCount + 1) * y;
+
+        private static (int, int, int) GetTriangleLeftBottom(int x, int y)
+            => (GetVertexNumber(x, y),
+            GetVertexNumber(x, y + 1),
+            GetVertexNumber(x + 1, y));
+
+        private static (int, int, int) GetTriangleLeftTop(int x, int y)
+            => (GetVertexNumber(x, y),
+            GetVertexNumber(x, y + 1),
+            GetVertexNumber(x + 1, y + 1));
+
+        private static (int, int, int) GetTriangleRightBottom(int x, int y)
+            => (GetVertexNumber(x, y),
+            GetVertexNumber(x + 1, y + 1),
+            GetVertexNumber(x + 1, y));
+
+        private static (int, int, int) GetTriangleRightTop(int x, int y)
+            => (GetVertexNumber(x, y + 1),
+            GetVertexNumber(x + 1, y + 1),
+            GetVertexNumber(x + 1, y));
     }
 }
