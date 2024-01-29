@@ -5,7 +5,7 @@ namespace SpaceFox
 {
     [RequireComponent(typeof(MeshFilter))]
     [RequireComponent(typeof(MeshRenderer))]
-    public class PlaneTerrainMeshChunk : MonoBehaviour
+    public class PlaneTerrainQuadMeshChunk : MonoBehaviour
     {
         private const int QuadCount = 64;
         private const float QuadSize = ChunkSize / QuadCount;

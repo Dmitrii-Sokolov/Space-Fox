@@ -5,7 +5,7 @@ namespace SpaceFox
 {
     public class PlaneTerrain : MonoBehaviour
     {
-        [SerializeField] private PlaneTerrainMeshChunk PlaneTerrainMeshChunk = default;
+        [SerializeField] private PlaneTerrainQuadMeshChunk PlaneTerrainMeshChunk = default;
         [SerializeField] private int XCount = default;
         [SerializeField] private int YCount = default;
 
@@ -20,9 +20,9 @@ namespace SpaceFox
                 for (var y = 0; y < YCount; y++)
                 {
                     var position = new Vector3(
-                        transform.position.x + (x - 0.5f * (XCount - 1)) * PlaneTerrainMeshChunk.ChunkSize,
+                        transform.position.x + (x - 0.5f * (XCount - 1)) * PlaneTerrainQuadMeshChunk.ChunkSize,
                         0,
-                        transform.position.z + (y - 0.5f * (YCount - 1)) * PlaneTerrainMeshChunk.ChunkSize);
+                        transform.position.z + (y - 0.5f * (YCount - 1)) * PlaneTerrainQuadMeshChunk.ChunkSize);
 
                     var go = DiContainer.InstantiatePrefab(
                         PlaneTerrainMeshChunk,
