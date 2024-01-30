@@ -41,7 +41,7 @@ namespace SpaceFox
                     //This can be simplified for performance
                     var gridPosition = GetLocalVertexPosition(ix, iy);
                     var position = transform.TransformPoint(gridPosition);
-                    var positionY = HeightProvider.GetHeight(position.x, position.z);
+                    var positionY = HeightProvider?.GetHeight(position.x, position.z) ?? position.y;
                     var localPosition = transform.InverseTransformPoint(position.x, positionY, position.z);
                     vertices[GetVertexNumber(ix, iy)] = localPosition;
                 }
@@ -73,10 +73,11 @@ namespace SpaceFox
             return triangles;
         }
 
-        private static Vector3 GetLocalVertexPosition(int ix, int iy)
-            => new((ix - 0.5f * (TrianglesCountX - iy % 2)) * TriangleSideLength,
+        private static Vector3 GetLocalVertexPosition(int x, int y)
+            => new(
+                (x - 0.5f * (TrianglesCountX - y % 2)) * TriangleSideLength,
                 0f,
-                (iy - 0.5f * TrianglesCountY) * TriangleHeight);
+                (y - 0.5f * TrianglesCountY) * TriangleHeight);
 
         private static int GetTrianglePairNumber(int x, int y)
             => x + TrianglesCountX * y;
