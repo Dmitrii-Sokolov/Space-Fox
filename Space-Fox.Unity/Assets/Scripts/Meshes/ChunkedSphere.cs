@@ -14,6 +14,13 @@ namespace SpaceFox
             public Triangle(params int[] vertices) => Vertices = vertices;
         }
 
+        private class Edge
+        {
+            public readonly int[] Vertices = new int[2];
+
+            public Edge(params int[] vertices) => Vertices = vertices;
+        }
+
         private const float Radius = 10f;
         private const int RecursiveDepth = 3;
         private static readonly Vector3 Center = Vector3.zero;
@@ -26,31 +33,39 @@ namespace SpaceFox
             for (var i = 0; i < vertices.Count; i++)
                 vertices[i] = vertices[i] * Radius + Center;
 
-            //TODO A lot of edges can be reused
-
             for (var i = 0; i < RecursiveDepth; i++)
             {
                 var newTriangles = new List<Triangle>();
+                var edgeCenters = new List<(int, int, int)>();
 
                 foreach (var triangle in triangles)
                 {
-                    var vertex0 = GetLocalVertexPosition(0.5f * (vertices[triangle.Vertices[0]] + vertices[triangle.Vertices[1]]));
-                    var vertex1 = GetLocalVertexPosition(0.5f * (vertices[triangle.Vertices[1]] + vertices[triangle.Vertices[2]]));
-                    var vertex2 = GetLocalVertexPosition(0.5f * (vertices[triangle.Vertices[2]] + vertices[triangle.Vertices[0]]));
-
-                    vertices.Add(vertex0);
-                    var vertex0Number = vertices.Count - 1;
-
-                    vertices.Add(vertex1);
-                    var vertex1Number = vertices.Count - 1;
-
-                    vertices.Add(vertex2);
-                    var vertex2Number = vertices.Count - 1;
+                    var vertex0Number = GetCenters(triangle.Vertices[0], triangle.Vertices[1]);
+                    var vertex1Number = GetCenters(triangle.Vertices[1], triangle.Vertices[2]);
+                    var vertex2Number = GetCenters(triangle.Vertices[2], triangle.Vertices[0]);
 
                     newTriangles.Add(new(triangle.Vertices[0], vertex0Number, vertex2Number));
                     newTriangles.Add(new(triangle.Vertices[1], vertex1Number, vertex0Number));
                     newTriangles.Add(new(triangle.Vertices[2], vertex2Number, vertex1Number));
                     newTriangles.Add(new(vertex0Number, vertex1Number, vertex2Number));
+
+                    int GetCenters(int v0, int v1)
+                    {
+                        foreach (var edge in edgeCenters)
+                        {
+                            if ((edge.Item1 == v0 && edge.Item2 == v1) ||
+                                (edge.Item2 == v0 && edge.Item1 == v1))
+                                return edge.Item3;
+                        }
+
+                        var v = GetLocalVertexPosition(0.5f * (vertices[v0] + vertices[v1]));
+                        vertices.Add(v);
+
+                        var vertexNumber = vertices.Count - 1;
+                        edgeCenters.Add((v0, v1, vertexNumber));
+
+                        return vertexNumber;
+                    }
                 }
 
                 triangles = newTriangles;
