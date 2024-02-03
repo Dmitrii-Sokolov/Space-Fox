@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace SpaceFox
@@ -7,18 +8,66 @@ namespace SpaceFox
     [RequireComponent(typeof(MeshRenderer))]
     public class ChunkedSphere : MonoBehaviour
     {
-        private class Triangle
+        private readonly struct Triangle
         {
-            public readonly int[] Vertices = new int[3];
+            public readonly int Vertex0;
+            public readonly int Vertex1;
+            public readonly int Vertex2;
 
-            public Triangle(params int[] vertices) => Vertices = vertices;
+            public int this[int index]
+                => index == 0
+                ? Vertex0
+                : index == 1
+                    ? Vertex1
+                    : index == 2
+                        ? Vertex2
+                        : throw new ArgumentOutOfRangeException();
+
+            public Triangle(int vertex0, int vertex1, int vertex2)
+            {
+                Vertex0 = vertex0;
+                Vertex1 = vertex1;
+                Vertex2 = vertex2;
+            }
+
+            public override bool Equals(object obj)
+                => obj is Triangle triangle && this == triangle;
+
+            public override int GetHashCode()
+                => HashCode.Combine(Vertex0, Vertex1, Vertex2);
+
+            public static bool operator ==(Triangle a, Triangle b)
+                => (a.Vertex0 == b.Vertex0 && a.Vertex1 == b.Vertex1 && a.Vertex2 == b.Vertex2)
+                || (a.Vertex0 == b.Vertex1 && a.Vertex1 == b.Vertex2 && a.Vertex2 == b.Vertex0)
+                || (a.Vertex0 == b.Vertex2 && a.Vertex1 == b.Vertex0 && a.Vertex2 == b.Vertex1);
+
+            public static bool operator !=(Triangle a, Triangle b)
+                => !(a == b);
         }
 
-        private class Edge
+        private readonly struct Edge
         {
-            public readonly int[] Vertices = new int[2];
+            public readonly int Vertex0;
+            public readonly int Vertex1;
 
-            public Edge(params int[] vertices) => Vertices = vertices;
+            public Edge(int vertex0, int vertex1)
+            {
+                Vertex0 = vertex0;
+                Vertex1 = vertex1;
+            }
+
+            public override bool Equals(object obj)
+                => obj is Edge edge && this == edge;
+
+            public override int GetHashCode()
+                => HashCode.Combine(Vertex0, Vertex1);
+
+            public static bool operator ==(Edge a, Edge b)
+                => (a.Vertex0 == b.Vertex0 && a.Vertex1 == b.Vertex1)
+                || (a.Vertex0 == b.Vertex1 && a.Vertex1 == b.Vertex0);
+
+            public static bool operator !=(Edge a, Edge b)
+                => !(a == b);
         }
 
         private const float Radius = 10f;
@@ -36,33 +85,33 @@ namespace SpaceFox
             for (var i = 0; i < RecursiveDepth; i++)
             {
                 var newTriangles = new List<Triangle>();
-                var edgeCenters = new List<(int, int, int)>();
+                var edgeCenters = new List<(Edge Edge, int CenterVertex)>();
 
                 foreach (var triangle in triangles)
                 {
-                    var vertex0Number = GetCenters(triangle.Vertices[0], triangle.Vertices[1]);
-                    var vertex1Number = GetCenters(triangle.Vertices[1], triangle.Vertices[2]);
-                    var vertex2Number = GetCenters(triangle.Vertices[2], triangle.Vertices[0]);
+                    //TODO Triangle to edges tranformation
+                    var vertex0Number = GetCenter(new(triangle[0], triangle[1]));
+                    var vertex1Number = GetCenter(new(triangle[1], triangle[2]));
+                    var vertex2Number = GetCenter(new(triangle[2], triangle[0]));
 
-                    newTriangles.Add(new(triangle.Vertices[0], vertex0Number, vertex2Number));
-                    newTriangles.Add(new(triangle.Vertices[1], vertex1Number, vertex0Number));
-                    newTriangles.Add(new(triangle.Vertices[2], vertex2Number, vertex1Number));
+                    newTriangles.Add(new(triangle[0], vertex0Number, vertex2Number));
+                    newTriangles.Add(new(triangle[1], vertex1Number, vertex0Number));
+                    newTriangles.Add(new(triangle[2], vertex2Number, vertex1Number));
                     newTriangles.Add(new(vertex0Number, vertex1Number, vertex2Number));
 
-                    int GetCenters(int v0, int v1)
+                    int GetCenter(Edge edge)
                     {
-                        foreach (var edge in edgeCenters)
+                        foreach (var edgeCenter in edgeCenters)
                         {
-                            if ((edge.Item1 == v0 && edge.Item2 == v1) ||
-                                (edge.Item2 == v0 && edge.Item1 == v1))
-                                return edge.Item3;
+                            if (edgeCenter.Edge == edge)
+                                return edgeCenter.CenterVertex;
                         }
 
-                        var v = GetLocalVertexPosition(0.5f * (vertices[v0] + vertices[v1]));
+                        var v = GetLocalVertexPosition(0.5f * (vertices[edge.Vertex0] + vertices[edge.Vertex1]));
                         vertices.Add(v);
 
                         var vertexNumber = vertices.Count - 1;
-                        edgeCenters.Add((v0, v1, vertexNumber));
+                        edgeCenters.Add((edge, vertexNumber));
 
                         return vertexNumber;
                     }
@@ -107,9 +156,9 @@ namespace SpaceFox
 
             for (var i = 0; i < triangles.Count; i++)
             {
-                array[3 * i] = triangles[i].Vertices[0];
-                array[3 * i + 1] = triangles[i].Vertices[1];
-                array[3 * i + 2] = triangles[i].Vertices[2];
+                array[3 * i] = triangles[i][0];
+                array[3 * i + 1] = triangles[i][1];
+                array[3 * i + 2] = triangles[i][2];
             }
 
             return array;
