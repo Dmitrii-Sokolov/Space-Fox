@@ -78,9 +78,18 @@ namespace SpaceFox
         {
             var mesh = new Mesh();
 
-            var (vertices, triangles) = GetTetrahedron();
+            var (vertices, triangles) = GetCube();
             for (var i = 0; i < vertices.Count; i++)
                 vertices[i] = vertices[i] * Radius + Center;
+
+            for (var i = 0; i < vertices.Count; i++)
+                vertices[i] = GetLocalVertexPosition(vertices[i]);
+
+            //It's possible to keep just vertices and edges, not triangles
+            //But which way is faster?
+
+            //It's possible to store triangles as edges (as edge index)
+            //Maybe it's will be faster?
 
             for (var i = 0; i < RecursiveDepth; i++)
             {
@@ -90,14 +99,14 @@ namespace SpaceFox
                 foreach (var triangle in triangles)
                 {
                     //TODO Triangle to edges tranformation
-                    var vertex0Number = GetCenter(new(triangle[0], triangle[1]));
-                    var vertex1Number = GetCenter(new(triangle[1], triangle[2]));
-                    var vertex2Number = GetCenter(new(triangle[2], triangle[0]));
+                    var center01 = GetCenter(new(triangle[0], triangle[1]));
+                    var center12 = GetCenter(new(triangle[1], triangle[2]));
+                    var center20 = GetCenter(new(triangle[2], triangle[0]));
 
-                    newTriangles.Add(new(triangle[0], vertex0Number, vertex2Number));
-                    newTriangles.Add(new(triangle[1], vertex1Number, vertex0Number));
-                    newTriangles.Add(new(triangle[2], vertex2Number, vertex1Number));
-                    newTriangles.Add(new(vertex0Number, vertex1Number, vertex2Number));
+                    newTriangles.Add(new(triangle[0], center01, center20));
+                    newTriangles.Add(new(triangle[1], center12, center01));
+                    newTriangles.Add(new(triangle[2], center20, center12));
+                    newTriangles.Add(new(center01, center12, center20));
 
                     int GetCenter(Edge edge)
                     {
@@ -146,6 +155,55 @@ namespace SpaceFox
                 new(2, 3, 0),
                 new(3, 1, 0)
             };
+
+            return (vertices, triangles);
+        }
+
+        private static (List<Vector3>, List<Triangle>) GetCube()
+        {
+            var vertices = new List<Vector3>()
+            {
+                new(-1f, -1f, -1f),
+                new(-1f, -1f,  1f),
+                new(-1f,  1f, -1f),
+                new(-1f,  1f,  1f),
+                new( 1f, -1f, -1f),
+                new( 1f, -1f,  1f),
+                new( 1f,  1f, -1f),
+                new( 1f,  1f,  1f),
+            };
+
+            var triangles = new List<Triangle>()
+            {
+                new(0, 3, 2),
+                new(1, 3, 0),
+                new(2, 3, 6),
+                new(3, 7, 6),
+                new(4, 6, 7),
+                new(4, 7, 5),
+                new(4, 5, 1),
+                new(1, 0, 4),
+                new(0, 2, 6),
+                new(0, 6, 4),
+                new(1, 7, 3),
+                new(1, 5, 7),
+            };
+            
+            //var triangles = new List<Triangle>()
+            //{
+            //    new(0, 1, 2),
+            //    new(1, 3, 2),
+            //    new(2, 3, 6),
+            //    new(3, 7, 6),
+            //    new(4, 6, 7),
+            //    new(4, 7, 5),
+            //    new(0, 5, 1),
+            //    new(5, 0, 4),
+            //    new(0, 2, 6),
+            //    new(0, 6, 4),
+            //    new(1, 5, 3),
+            //    new(3, 5, 7),
+            //};
 
             return (vertices, triangles);
         }
