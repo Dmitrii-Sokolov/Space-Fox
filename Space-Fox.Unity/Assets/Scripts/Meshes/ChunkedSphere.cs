@@ -71,13 +71,29 @@ namespace SpaceFox
         }
 
         private const float Radius = 10f;
-        private const int RecursiveDepth = 3;
+        private const int RecursiveDepth = 0;
         private static readonly Vector3 Center = Vector3.zero;
 
         private void Awake()
         {
+            //It's possible to store triangles as edges (as edge index)
+            //Maybe it's will be faster?
+
+            var (vertices, triangles) = GetSphereFromCube(RecursiveDepth);
+
             var mesh = new Mesh();
 
+            mesh.vertices = vertices;
+            mesh.triangles = triangles;
+
+            mesh.RecalculateBounds();
+            mesh.RecalculateNormals();
+
+            GetComponent<MeshFilter>().mesh = mesh;
+        }
+
+        private static (Vector3[] Vertices, int[] Triangles) GetSphereFromCube(int recursiveDepth)
+        {
             var (vertices, triangles) = GetCube();
             for (var i = 0; i < vertices.Count; i++)
                 vertices[i] = vertices[i] * Radius + Center;
@@ -85,13 +101,7 @@ namespace SpaceFox
             for (var i = 0; i < vertices.Count; i++)
                 vertices[i] = GetLocalVertexPosition(vertices[i]);
 
-            //It's possible to keep just vertices and edges, not triangles
-            //But which way is faster?
-
-            //It's possible to store triangles as edges (as edge index)
-            //Maybe it's will be faster?
-
-            for (var i = 0; i < RecursiveDepth; i++)
+            for (var i = 0; i < recursiveDepth; i++)
             {
                 var newTriangles = new List<Triangle>();
                 var edgeCenters = new List<(Edge Edge, int CenterVertex)>();
@@ -129,13 +139,7 @@ namespace SpaceFox
                 triangles = newTriangles;
             }
 
-            mesh.vertices = vertices.ToArray();
-            mesh.triangles = TrianglesToArray(triangles);
-
-            mesh.RecalculateBounds();
-            mesh.RecalculateNormals();
-
-            GetComponent<MeshFilter>().mesh = mesh;
+            return (vertices.ToArray(), TrianglesToArray(triangles));
         }
 
         private static (List<Vector3>, List<Triangle>) GetTetrahedron()
@@ -175,35 +179,19 @@ namespace SpaceFox
 
             var triangles = new List<Triangle>()
             {
-                new(0, 3, 2),
-                new(1, 3, 0),
-                new(2, 3, 6),
-                new(3, 7, 6),
-                new(4, 6, 7),
-                new(4, 7, 5),
-                new(4, 5, 1),
-                new(1, 0, 4),
-                new(0, 2, 6),
-                new(0, 6, 4),
-                new(1, 7, 3),
-                new(1, 5, 7),
+                new(1, 2, 0),
+                new(2, 1, 3),
+                new(4, 1, 0),
+                new(1, 4, 5),
+                new(2, 4, 0),
+                new(4, 2, 6),
+                new(6, 5, 4),
+                new(5, 6, 7),
+                new(3, 6, 2),
+                new(6, 3, 7),
+                new(5, 3, 1),
+                new(3, 5, 7),
             };
-            
-            //var triangles = new List<Triangle>()
-            //{
-            //    new(0, 1, 2),
-            //    new(1, 3, 2),
-            //    new(2, 3, 6),
-            //    new(3, 7, 6),
-            //    new(4, 6, 7),
-            //    new(4, 7, 5),
-            //    new(0, 5, 1),
-            //    new(5, 0, 4),
-            //    new(0, 2, 6),
-            //    new(0, 6, 4),
-            //    new(1, 5, 3),
-            //    new(3, 5, 7),
-            //};
 
             return (vertices, triangles);
         }
