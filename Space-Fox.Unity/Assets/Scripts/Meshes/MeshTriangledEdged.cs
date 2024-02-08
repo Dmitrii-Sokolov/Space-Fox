@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace SpaceFox
 {
-    public class MeshTriangledEdged
+    public class MeshTriangledEdged : IMesh
     {
         public struct EdgeLink
         {
@@ -171,6 +171,25 @@ namespace SpaceFox
             Vertices = vertices;
             Edges = edges;
             Triangles = triangles;
+        }
+
+        public int[] GetTrianglesAsPlainArray()
+        {
+            var trianglesClassic = new List<int>(3 * Triangles.Count);
+            foreach (var triangle in Triangles)
+            {
+                AddVertex(triangle.Edge0);
+                AddVertex(triangle.Edge1);
+                AddVertex(triangle.Edge2);
+
+                void AddVertex(EdgeLink edge)
+                {
+                    var v0 = edge.Reversed ? Edges[edge.Index].Vertex1 : Edges[edge.Index].Vertex0;
+                    trianglesClassic.Add(v0);
+                }
+            }
+
+            return trianglesClassic.ToArray();
         }
 
         public MeshTriangledEdged MoveAndScale(Vector3 offset, float scale)

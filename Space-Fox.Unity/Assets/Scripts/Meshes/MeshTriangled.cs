@@ -1,21 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using UnityEngine;
-using static UnityEditor.Searcher.SearcherWindow.Alignment;
 
 namespace SpaceFox
 {
-    public static class ListExtension
-    {
-        public static List<T> MakeCopy<T>(this List<T> list)
-        {
-            var newList = new List<T>(list.Count);
-            newList.AddRange(list);
-            return newList;
-        }
-    }
-
-    public class MeshTriangled
+    public class MeshTriangled : IMesh
     {
         public struct Triangle
         {
