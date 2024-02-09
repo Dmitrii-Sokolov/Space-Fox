@@ -192,6 +192,37 @@ namespace SpaceFox
             return trianglesClassic.ToArray();
         }
 
+        public void MakeRibbed()
+        {
+            var newVertices = new Vector3[3 * Triangles.Count];
+            var newEdges = new Edge[3 * Triangles.Count];
+
+            for (var i = 0; i < Triangles.Count; i++)
+            {
+                for (var j = 0; j < 3; j++)
+                {
+                    newVertices[3 * i + j] = Vertices[Triangles[i][j].Reversed
+                        ? Edges[Triangles[i][j].Index].Vertex1
+                        : Edges[Triangles[i][j].Index].Vertex0];
+                }
+
+                newEdges[3 * i + 0] = new(3 * i + 0, 3 * i + 1);
+                newEdges[3 * i + 1] = new(3 * i + 1, 3 * i + 2);
+                newEdges[3 * i + 2] = new(3 * i + 2, 3 * i + 0);
+
+                Triangles[i] = new(
+                    3 * i + 0, false,
+                    3 * i + 1, false,
+                    3 * i + 2, false);
+            }
+
+            Vertices.Clear();
+            Vertices.AddRange(newVertices);
+
+            Edges.Clear();
+            Edges.AddRange(newEdges);
+        }
+
         public MeshTriangledEdged MoveAndScale(Vector3 offset, float scale)
         {
             for (var i = 0; i < Vertices.Count; i++)
