@@ -97,7 +97,7 @@ namespace SpaceFox
                     var centerNumber = vertices.Count - 1;
 
                     newEdges.Add(new(edge.Vertex0, centerNumber));
-                    newEdges.Add(new(centerNumber, edge.Vertex0));
+                    newEdges.Add(new(centerNumber, edge.Vertex1));
                     //newEdgeNumber = 2 * oldEdgeNumber, 2 * oldEdgeNumber + 1
 
                     Vector3 GetEdgeCenter(MeshTriangledEdged.Edge edge)
