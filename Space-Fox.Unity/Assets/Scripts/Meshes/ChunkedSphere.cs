@@ -60,9 +60,8 @@ namespace SpaceFox
                         }
 
                         var v = GetLocalVertexPosition(0.5f * (vertices[sample.Vertex0] + vertices[sample.Vertex1]));
-                        vertices.Add(v);
 
-                        var vertexNumber = vertices.Count - 1;
+                        var vertexNumber = vertices.AddAndReturnIndex(v);
                         edgeCenters.Add((sample, vertexNumber));
 
                         return vertexNumber;
@@ -93,12 +92,10 @@ namespace SpaceFox
                 foreach (var edge in edges)
                 {
                     var center = GetEdgeCenter(edge);
-                    vertices.Add(center);
-                    var centerNumber = vertices.Count - 1;
+                    var centerNumber = vertices.AddAndReturnIndex(center);
 
                     newEdges.Add(new(edge.Vertex0, centerNumber));
                     newEdges.Add(new(centerNumber, edge.Vertex1));
-                    //newEdgeNumber = 2 * oldEdgeNumber, 2 * oldEdgeNumber + 1
 
                     Vector3 GetEdgeCenter(MeshTriangledEdged.Edge edge)
                         => GetLocalVertexPosition(0.5f * (vertices[edge.Vertex0] + vertices[edge.Vertex1]));
@@ -107,39 +104,43 @@ namespace SpaceFox
                 foreach (var triangle in triangles)
                 {
                     //New Edges
-
                     var center0VertexNumber = newEdges[2 * triangle.Edge0.Index].Vertex1;
                     var center1VertexNumber = newEdges[2 * triangle.Edge1.Index].Vertex1;
                     var center2VertexNumber = newEdges[2 * triangle.Edge2.Index].Vertex1;
 
-                    newEdges.Add(new(center0VertexNumber, center1VertexNumber));
-                    var edge01Number = newEdges.Count - 1;
+                    var edge01Number = newEdges.AddAndReturnIndex(new(center0VertexNumber, center1VertexNumber));
+                    var edge12Number = newEdges.AddAndReturnIndex(new(center1VertexNumber, center2VertexNumber));
+                    var edge20Number = newEdges.AddAndReturnIndex(new(center2VertexNumber, center0VertexNumber));
 
-                    newEdges.Add(new(center1VertexNumber, center2VertexNumber));
-                    var edge12Number = newEdges.Count - 1;
+                    newTriangles.Add(new(
+                        GetEdgeHalf(triangle.Edge2, true),
+                        GetEdgeHalf(triangle.Edge0, false),
+                        new(edge20Number, true)));
 
-                    newEdges.Add(new(center2VertexNumber, center0VertexNumber));
-                    var edge20Number = newEdges.Count - 1;
+                    newTriangles.Add(new(
+                        GetEdgeHalf(triangle.Edge0, true),
+                        GetEdgeHalf(triangle.Edge1, false),
+                        new(edge01Number, true)));
 
-                    var edge0 = new MeshTriangledEdged.EdgeLink(triangle.Edge2.Reversed ? 2 * triangle.Edge2.Index : 2 * triangle.Edge2.Index + 1, triangle.Edge2.Reversed); 
-                    var edge1 = new MeshTriangledEdged.EdgeLink(triangle.Edge0.Reversed ? 2 * triangle.Edge0.Index + 1 : 2 * triangle.Edge0.Index, triangle.Edge0.Reversed); 
-                    var edge2 = new MeshTriangledEdged.EdgeLink(edge20Number, true);
-                    newTriangles.Add(new(edge0, edge1, edge2));
+                    newTriangles.Add(new(
+                        GetEdgeHalf(triangle.Edge1, true),
+                        GetEdgeHalf(triangle.Edge2, false),
+                        new(edge12Number, true)));
 
-                    edge0 = new MeshTriangledEdged.EdgeLink(triangle.Edge0.Reversed ? 2 * triangle.Edge0.Index : 2 * triangle.Edge0.Index + 1, triangle.Edge0.Reversed); 
-                    edge1 = new MeshTriangledEdged.EdgeLink(triangle.Edge1.Reversed ? 2 * triangle.Edge1.Index + 1 : 2 * triangle.Edge1.Index, triangle.Edge1.Reversed); 
-                    edge2 = new MeshTriangledEdged.EdgeLink(edge01Number, true);
-                    newTriangles.Add(new(edge0, edge1, edge2));
+                    newTriangles.Add(new(
+                        new(edge01Number, false),
+                        new(edge12Number, false),
+                        new(edge20Number, false)));
 
-                    edge0 = new MeshTriangledEdged.EdgeLink(triangle.Edge1.Reversed ? 2 * triangle.Edge1.Index : 2 * triangle.Edge1.Index + 1, triangle.Edge1.Reversed); 
-                    edge1 = new MeshTriangledEdged.EdgeLink(triangle.Edge2.Reversed ? 2 * triangle.Edge2.Index + 1 : 2 * triangle.Edge2.Index, triangle.Edge2.Reversed); 
-                    edge2 = new MeshTriangledEdged.EdgeLink(edge12Number, true);
-                    newTriangles.Add(new(edge0, edge1, edge2));
-
-                    edge0 = new MeshTriangledEdged.EdgeLink(edge01Number, false);
-                    edge1 = new MeshTriangledEdged.EdgeLink(edge12Number, false);
-                    edge2 = new MeshTriangledEdged.EdgeLink(edge20Number, false);
-                    newTriangles.Add(new(edge0, edge1, edge2));
+                    MeshTriangledEdged.EdgeLink GetEdgeHalf(MeshTriangledEdged.EdgeLink oldLink, bool firstHalf)
+                    {
+                        //newEdgeNumber = 2 * oldEdgeNumber, 2 * oldEdgeNumber + 1
+                        return new (
+                            oldLink.Reversed ^ firstHalf
+                                ? 2 * oldLink.Index + 1
+                                : 2 * oldLink.Index,
+                            oldLink.Reversed);
+                    }
                 }
 
                 edges = newEdges;

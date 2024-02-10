@@ -10,5 +10,11 @@ namespace SpaceFox
             newList.AddRange(list);
             return newList;
         }
+
+        public static int AddAndReturnIndex<T>(this List<T> list, T value)
+        {
+            list.Add(value);
+            return list.Count - 1;
+        }
     }
 }

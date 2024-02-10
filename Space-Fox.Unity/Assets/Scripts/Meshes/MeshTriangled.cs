@@ -140,9 +140,9 @@ namespace SpaceFox
                         if (edges[i] == edge)
                             return new MeshTriangledEdged.EdgeLink(i, edge.Vertex0 != edges[i].Vertex0);
                     }
-
-                    edges.Add(edge);
-                    return new(edges.Count - 1, false);
+                    
+                    var newEdgeIndex = edges.AddAndReturnIndex(edge);
+                    return new(newEdgeIndex, false);
                 }
             }
 
