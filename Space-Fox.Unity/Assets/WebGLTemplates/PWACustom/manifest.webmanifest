@@ -4,11 +4,11 @@
     "start_url": "index.html",
     "display": "fullscreen",
     "background_color": "{{{ BACKGROUND_COLOR }}}",
-    "theme_color": "{{{  SPLASH_SCREEN_STYLE.toLowerCase() === 'light' ? '#fff' : '#000' }}}",
+    "theme_color": "#000",
     "description": {{{ JSON.stringify(PRODUCT_DESCRIPTION) }}},
     "icons": [{
       "src": "TemplateData/app-logo.png",
-      "sizes": "144x144",
+      "sizes": "256x256",
       "type": "image/png",
       "purpose": "any maskable"
     }]
