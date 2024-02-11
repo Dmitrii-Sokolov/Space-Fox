@@ -1,15 +1,31 @@
 ﻿using System;
 using System.Collections.Generic;
+using UnityEngine;
 
 namespace SpaceFox
 {
     public class DisposableComposer : IDisposableComposer
     {
         private readonly List<IDisposable> Disposables = new();
-        private bool IsDisposed = false;
+
+        public bool IsDisposed { get; private set; } = false;
+
+        public DisposableComposer(params IDisposable[] disposables)
+            => Disposables.AddRange(disposables);
 
         public void AddDisposable(IDisposable disposable)
-            => Disposables.Add(disposable);
+        {
+            if (IsDisposed)
+            {
+                disposable.Dispose();
+
+                Debug.LogWarning($"Subscription after disposing");
+            }
+            else
+            {
+                Disposables.Add(disposable);
+            }
+        }
 
         public void Dispose()
         {

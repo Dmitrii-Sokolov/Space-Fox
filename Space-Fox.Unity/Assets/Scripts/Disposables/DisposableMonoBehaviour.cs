@@ -3,10 +3,11 @@ using UnityEngine;
 
 namespace SpaceFox
 {
-    public class DisposableMonoBehaviour : MonoBehaviour, IDisposableComposer
+    public abstract class DisposableMonoBehaviour : MonoBehaviour, IDisposableComposer
     {
         private readonly DisposableComposer DisposableComposer = new();
-        private bool IsDisposed = false;
+
+        public bool IsDisposed => DisposableComposer.IsDisposed;
 
         public void AddDisposable(IDisposable disposable)
             => DisposableComposer.AddDisposable(disposable);
@@ -27,8 +28,6 @@ namespace SpaceFox
         {
             if (IsDisposed)
                 return;
-
-            IsDisposed = true;
 
             DisposableComposer.Dispose();
 

@@ -1,0 +1,8 @@
+body { padding: 0; margin: 0 }
+#app-container { position: fixed; width: 100%; height: 100%; }
+#app-canvas { width: 100%; height: 100%; background: {{{ BACKGROUND_COLOR }}} }
+#app-loading-bar { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: none }
+#app-logo { width: 256px; height: 256px; background: url('app-logo.png') no-repeat center }
+#app-progress-bar-empty { margin-left: auto; margin-right: auto; width: 141px; height: 18px; margin-top: 10px; background: url('progress-bar-empty.png') no-repeat center }
+#app-progress-bar-full { width: 0%; height: 18px; margin-top: 10px; background: url('progress-bar-full.png') no-repeat center }
+#app-warning { position: absolute; left: 50%; top: 5%; transform: translate(-50%); background: white; padding: 10px; display: none }
