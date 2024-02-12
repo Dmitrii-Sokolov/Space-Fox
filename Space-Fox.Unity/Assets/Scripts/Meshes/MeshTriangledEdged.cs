@@ -1,35 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 namespace SpaceFox
 {
     public class MeshTriangledEdged : IMesh
     {
-        public struct EdgeLink
-        {
-            public int Index { get; set; }
-            public bool Reversed { get; set; }
-
-            public EdgeLink(int index, bool reversed)
-            {
-                Index = index;
-                Reversed = reversed;
-            }
-
-            public override readonly bool Equals(object obj)
-                => obj is EdgeLink edge && this == edge;
-
-            public override readonly int GetHashCode()
-                => HashCode.Combine(Index, Reversed);
-
-            public static bool operator ==(EdgeLink a, EdgeLink b)
-                => a.Index == b.Index && a.Reversed == b.Reversed;
-
-            public static bool operator !=(EdgeLink a, EdgeLink b)
-                => !(a == b);
-        }
-
         public struct Triangle
         {
 
@@ -102,75 +79,30 @@ namespace SpaceFox
 
             public static bool operator !=(Triangle a, Triangle b)
                 => !(a == b);
-        }
 
-        public struct Edge
-        {
-            public int Vertex0 { get; private set; }
-            public int Vertex1 { get; private set; }
-
-            public int this[int index]
-            {
-                readonly get
-                {
-                    return index switch
-                    {
-                        0 => Vertex0,
-                        1 => Vertex1,
-                        _ => throw new ArgumentOutOfRangeException(),
-                    };
-                }
-                set
-                {
-                    switch (index)
-                    {
-                        case 0:
-                            Vertex0 = value;
-                            break;
-
-                        case 1:
-                            Vertex1 = value;
-                            break;
-
-                        default:
-                            throw new ArgumentOutOfRangeException();
-                    }
-                }
-            }
-
-            public Edge(int vertex0, int vertex1)
-            {
-                Vertex0 = vertex0;
-                Vertex1 = vertex1;
-            }
-
-            public override readonly bool Equals(object obj)
-                => obj is Edge edge && this == edge;
-
-            public override readonly int GetHashCode()
-                => HashCode.Combine(Vertex0, Vertex1);
-
-            public static bool operator ==(Edge a, Edge b)
-                => (a.Vertex0 == b.Vertex0 && a.Vertex1 == b.Vertex1)
-                || (a.Vertex0 == b.Vertex1 && a.Vertex1 == b.Vertex0);
-
-            public static bool operator !=(Edge a, Edge b)
-                => !(a == b);
+            public MeshPolygoned.Polygon ToPolygon()
+                => new(Edge0, Edge1, Edge2);
         }
 
         public List<Vector3> Vertices { get; }
         public List<Edge> Edges { get; }
         public List<Triangle> Triangles { get; }
 
-        public MeshTriangledEdged() : this(new(), new(), new())
+        public MeshTriangledEdged() : this(
+            new Vector3[0],
+            new Edge[0],
+            new Triangle[0])
         {
         }
 
-        public MeshTriangledEdged(List<Vector3> vertices, List<Edge> edges, List<Triangle> triangles)
+        public MeshTriangledEdged(
+            IEnumerable<Vector3> vertices,
+            IEnumerable<Edge> edges,
+            IEnumerable<Triangle> triangles)
         {
-            Vertices = vertices;
-            Edges = edges;
-            Triangles = triangles;
+            Vertices = vertices.ToList();
+            Edges = edges.ToList();
+            Triangles = triangles.ToList();
         }
 
         public int[] GetTrianglesAsPlainArray()
@@ -231,6 +163,9 @@ namespace SpaceFox
             return this;
         }
 
+        public MeshPolygoned ToMeshPolygoned()
+            => new(Vertices, Edges, Triangles.Select(triangle => triangle.ToPolygon()));
+
         public static MeshTriangledEdged GetTetrahedron(Vector3 center)
             => GetTetrahedron().MoveAndScale(center, 1f);
 
@@ -256,7 +191,7 @@ namespace SpaceFox
             => GetCube().MoveAndScale(center, side);
 
         /// <summary>
-        /// Get Tetrahedron with center in (0f, 0f, 0f) and side 1f
+        /// Get Cube with center in (0f, 0f, 0f) and side 1f
         /// </summary>
         public static MeshTriangledEdged GetCube()
             => MeshTriangled.GetCube().ToMeshTriangledEdged();

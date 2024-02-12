@@ -122,23 +122,23 @@ namespace SpaceFox
         {
             var vertices = Vertices.MakeCopy();
 
-            var edges = new List<MeshTriangledEdged.Edge>();
+            var edges = new List<Edge>();
             var triangles = new List<MeshTriangledEdged.Triangle>();
 
             foreach (var triangle in Triangles)
             {
-                var edge01 = new MeshTriangledEdged.Edge(triangle.Vertex0, triangle.Vertex1);
-                var edge12 = new MeshTriangledEdged.Edge(triangle.Vertex1, triangle.Vertex2);
-                var edge20 = new MeshTriangledEdged.Edge(triangle.Vertex2, triangle.Vertex0);
+                var edge01 = new Edge(triangle.Vertex0, triangle.Vertex1);
+                var edge12 = new Edge(triangle.Vertex1, triangle.Vertex2);
+                var edge20 = new Edge(triangle.Vertex2, triangle.Vertex0);
 
                 triangles.Add(new(GetEdge(edge01),GetEdge(edge12), GetEdge(edge20)));
 
-                MeshTriangledEdged.EdgeLink GetEdge(MeshTriangledEdged.Edge edge)
+                EdgeLink GetEdge(Edge edge)
                 {
                     for (var i = 0; i < edges.Count; i++)
                     {
                         if (edges[i] == edge)
-                            return new MeshTriangledEdged.EdgeLink(i, edge.Vertex0 != edges[i].Vertex0);
+                            return new EdgeLink(i, edge.Vertex0 != edges[i].Vertex0);
                     }
                     
                     var newEdgeIndex = edges.AddAndReturnIndex(edge);
@@ -192,7 +192,7 @@ namespace SpaceFox
             => GetTetrahedron().MoveAndScale(center, side);
         
         /// <summary>
-        /// Get Tetrahedron with center in (0f, 0f, 0f) and side 1f
+        /// Get Cube with center in (0f, 0f, 0f) and side 1f
         /// </summary>
         public static MeshTriangled GetCube()
         {

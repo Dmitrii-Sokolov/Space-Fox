@@ -13,10 +13,7 @@ namespace SpaceFox
 
         private void Awake()
         {
-            //It's possible to store triangles as edges (as edge index)
-            //Maybe it's will be faster?
-
-            var sphere = GetSphereFromCubeE(RecursiveDepth);
+            var sphere = GetSphereFromCube(RecursiveDepth);
 
             var mesh = new Mesh();
 
@@ -25,56 +22,7 @@ namespace SpaceFox
             GetComponent<MeshFilter>().mesh = mesh;
         }
 
-        private static MeshTriangled GetSphereFromCubeV(int recursiveDepth)
-        {
-            var cube = MeshTriangled.GetCube();
-            var (vertices, triangles) = (cube.Vertices, cube.Triangles);
-            for (var i = 0; i < vertices.Count; i++)
-                vertices[i] = vertices[i] * Radius + Center;
-
-            for (var i = 0; i < vertices.Count; i++)
-                vertices[i] = GetLocalVertexPosition(vertices[i]);
-
-            for (var i = 0; i < recursiveDepth; i++)
-            {
-                var newTriangles = new List<MeshTriangled.Triangle>();
-                var edgeCenters = new List<(MeshTriangledEdged.Edge Edge, int CenterVertex)>();
-
-                foreach (var triangle in triangles)
-                {
-                    var center01 = GetCenter(new(triangle[0], triangle[1]));
-                    var center12 = GetCenter(new(triangle[1], triangle[2]));
-                    var center20 = GetCenter(new(triangle[2], triangle[0]));
-
-                    newTriangles.Add(new(triangle[0], center01, center20));
-                    newTriangles.Add(new(triangle[1], center12, center01));
-                    newTriangles.Add(new(triangle[2], center20, center12));
-                    newTriangles.Add(new(center01, center12, center20));
-
-                    int GetCenter(MeshTriangledEdged.Edge sample)
-                    {
-                        foreach (var (edge, centerVertex) in edgeCenters)
-                        {
-                            if (edge == sample)
-                                return centerVertex;
-                        }
-
-                        var v = GetLocalVertexPosition(0.5f * (vertices[sample.Vertex0] + vertices[sample.Vertex1]));
-
-                        var vertexNumber = vertices.AddAndReturnIndex(v);
-                        edgeCenters.Add((sample, vertexNumber));
-
-                        return vertexNumber;
-                    }
-                }
-
-                triangles = newTriangles;
-            }
-
-            return new(vertices, triangles);
-        }
-        
-        private static MeshTriangledEdged GetSphereFromCubeE(int recursiveDepth)
+        private static MeshTriangledEdged GetSphereFromCube(int recursiveDepth)
         {
             var cube = MeshTriangledEdged.GetCube();
             var (vertices, edges, triangles) = (cube.Vertices, cube.Edges, cube.Triangles);
@@ -86,7 +34,7 @@ namespace SpaceFox
 
             for (var i = 0; i < recursiveDepth; i++)
             {
-                var newEdges = new List<MeshTriangledEdged.Edge>();
+                var newEdges = new List<Edge>();
                 var newTriangles = new List<MeshTriangledEdged.Triangle>();
 
                 foreach (var edge in edges)
@@ -97,7 +45,7 @@ namespace SpaceFox
                     newEdges.Add(new(edge.Vertex0, centerNumber));
                     newEdges.Add(new(centerNumber, edge.Vertex1));
 
-                    Vector3 GetEdgeCenter(MeshTriangledEdged.Edge edge)
+                    Vector3 GetEdgeCenter(Edge edge)
                         => GetLocalVertexPosition(0.5f * (vertices[edge.Vertex0] + vertices[edge.Vertex1]));
                 }
 
@@ -132,7 +80,7 @@ namespace SpaceFox
                         new(edge12Number, false),
                         new(edge20Number, false)));
 
-                    MeshTriangledEdged.EdgeLink GetEdgeHalf(MeshTriangledEdged.EdgeLink oldLink, bool firstHalf)
+                    EdgeLink GetEdgeHalf(EdgeLink oldLink, bool firstHalf)
                     {
                         //newEdgeNumber = 2 * oldEdgeNumber, 2 * oldEdgeNumber + 1
                         return new (
