@@ -115,10 +115,7 @@ namespace SpaceFox
                 AddVertex(triangle.Edge2);
 
                 void AddVertex(EdgeLink edge)
-                {
-                    var v0 = edge.Reversed ? Edges[edge.Index].Vertex1 : Edges[edge.Index].Vertex0;
-                    trianglesClassic.Add(v0);
-                }
+                    => trianglesClassic.Add(edge.GetFirstVertexIndex(Edges));
             }
 
             return trianglesClassic.ToArray();
@@ -132,11 +129,7 @@ namespace SpaceFox
             for (var i = 0; i < Triangles.Count; i++)
             {
                 for (var j = 0; j < 3; j++)
-                {
-                    newVertices[3 * i + j] = Vertices[Triangles[i][j].Reversed
-                        ? Edges[Triangles[i][j].Index].Vertex1
-                        : Edges[Triangles[i][j].Index].Vertex0];
-                }
+                    newVertices[3 * i + j] = Vertices[Triangles[i][j].GetFirstVertexIndex(Edges)];
 
                 newEdges[3 * i + 0] = new(3 * i + 0, 3 * i + 1);
                 newEdges[3 * i + 1] = new(3 * i + 1, 3 * i + 2);

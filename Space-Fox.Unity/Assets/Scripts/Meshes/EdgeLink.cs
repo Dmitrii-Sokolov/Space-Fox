@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 
 namespace SpaceFox
 {
@@ -15,6 +16,9 @@ namespace SpaceFox
             Index = index;
             Reversed = reversed;
         }
+
+        public readonly int GetFirstVertexIndex(List<Edge> edges)
+            => Reversed ? edges[Index].Vertex1 : edges[Index].Vertex0;
 
         public override readonly bool Equals(object obj)
             => obj is EdgeLink edge && this == edge;

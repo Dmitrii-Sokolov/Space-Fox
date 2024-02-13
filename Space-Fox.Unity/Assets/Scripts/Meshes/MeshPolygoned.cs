@@ -73,7 +73,7 @@ namespace SpaceFox
                 }
 
                 int GetFirstVertexIndex(EdgeLink edge)
-                    => edge.Reversed ? Edges[edge.Index].Vertex1 : Edges[edge.Index].Vertex0;
+                    => edge.GetFirstVertexIndex(Edges);
             }
 
             return trianglesClassic.ToArray();
@@ -92,11 +92,7 @@ namespace SpaceFox
                 var newElementsCount = polygon.Count;
 
                 foreach (var edge in polygon)
-                {
-                    newVertices.Add(Vertices[edge.Reversed
-                        ? Edges[edge.Index].Vertex1
-                        : Edges[edge.Index].Vertex0]);
-                }
+                    newVertices.Add(Vertices[edge.GetFirstVertexIndex(Edges)]);
 
                 polygon.Clear();
                 for (var i = 0; i < newElementsCount; i++)
