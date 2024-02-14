@@ -1,21 +1,53 @@
 ﻿using System;
 using System.Collections.Generic;
 using UnityEngine;
+using Zenject;
 
 namespace SpaceFox
 {
     [RequireComponent(typeof(MeshFilter))]
     [RequireComponent(typeof(MeshRenderer))]
-    public class ChunkedSphere : MonoBehaviour
+    public class ChunkedSphere : DisposableMonoBehaviour
     {
-        private const float Radius = 10f;
-        private const int RecursiveDepth = 3;
         private static readonly Vector3 Center = Vector3.zero;
 
-        private void Awake()
+        [Inject] private readonly UpdateProxy UpdateProxy = default;
+
+        private readonly ObservableValue<int> RecursiveDepth = new();
+        private readonly ObservableValue<float> Radius = new();
+
+        private bool IsDirty = false;
+
+        [SerializeField]
+        [Range(0, 7)] private int CurrentRecursiveDepth = 3;
+
+        [SerializeField]
+        [Range(0.1f, 100f)] private float CurrentRadius = 10f;
+
+        protected override void AwakeBeforeDestroy()
         {
-            //Why results are different? GetSphereFromCube / GetSphereFromCubeLegacy
-            var sphere = GetSphereFromCube(RecursiveDepth);
+            //TODO Add Primitive choosing
+
+            RecursiveDepth.Subscribe(_ => IsDirty = true).While(this);
+            Radius.Subscribe(_ => IsDirty = true).While(this);
+            UpdateProxy.Update.Subscribe(OnUpdate).While(this);
+        }
+
+        private void OnUpdate()
+        {
+            RecursiveDepth.Value = CurrentRecursiveDepth;
+            Radius.Value = CurrentRadius;
+
+            if (IsDirty)
+            {
+                IsDirty = false;
+                RegenerageMesh();
+            }
+        }
+
+        private void RegenerageMesh()
+        {
+            var sphere = GetSphereFromCube(RecursiveDepth.Value, Center, Radius.Value);
 
             var mesh = new Mesh();
 
@@ -24,82 +56,62 @@ namespace SpaceFox
             GetComponent<MeshFilter>().mesh = mesh;
         }
 
-        private static MeshPolygoned GetSphereFromCube(int recursiveDepth)
+        private static MeshPolygoned GetSphereFromCube(int recursiveDepth, Vector3 center, float radius)
         {
-            var cube = MeshPolygoned.GetCube();
+            var cube = MeshPolygoned.GetTetrahedron(center, radius);
+
             var (vertices, edges, polygons) = (cube.Vertices, cube.Edges, cube.Polygons);
-            for (var i = 0; i < vertices.Count; i++)
-                vertices[i] = vertices[i] * Radius + Center;
 
             for (var i = 0; i < vertices.Count; i++)
-                vertices[i] = GetLocalVertexPosition(vertices[i]);
+                vertices[i] = GetLocalVertexPosition(vertices[i], center, radius);
 
             for (var i = 0; i < recursiveDepth; i++)
             {
-                var newEdges = new List<Edge>();
-                var newPolygons = new List<MeshPolygoned.Polygon>();
+                var newEdges = new List<Edge>(2 * edges.Count + 4 * polygons.Count);
+                var newPolygons = new List<MeshPolygoned.Polygon>(4 * polygons.Count);
+                var edgesRemap = new (int FirstEdge, int LastEdge, int CenterVertex)[edges.Count];
 
-                foreach (var edge in edges)
+                for (var l = 0; l < edges.Count; l++)
                 {
-                    var center = GetEdgeCenter(edge);
-                    var centerNumber = vertices.AddAndReturnIndex(center);
+                    var edge = edges[l];
+                    var edgeCenter = GetLocalVertexPosition(0.5f * (vertices[edge.Vertex0] + vertices[edge.Vertex1]), center, radius);
+                    var centerNumber = vertices.AddAndReturnIndex(edgeCenter);
 
-                    newEdges.Add(new(edge.Vertex0, centerNumber));
-                    newEdges.Add(new(centerNumber, edge.Vertex1));
-
-                    Vector3 GetEdgeCenter(Edge edge)
-                        => GetLocalVertexPosition(0.5f * (vertices[edge.Vertex0] + vertices[edge.Vertex1]));
+                    edgesRemap[l] = (
+                        newEdges.AddAndReturnIndex(new(edge.Vertex0, centerNumber)),
+                        newEdges.AddAndReturnIndex(new(centerNumber, edge.Vertex1)),
+                        centerNumber);
                 }
 
                 foreach (var polygon in polygons)
                 {
-                    if (polygon.Count != 4)
-                        throw new NotImplementedException();
+                    var polygonCenter = vertices.AddAndReturnIndex(
+                        GetLocalVertexPosition(polygon.GetCenter(vertices, edges), center, radius));
 
-                    //New Edges
-                    var center0VertexNumber = newEdges[2 * polygon[0].Index].Vertex1;
-                    var center1VertexNumber = newEdges[2 * polygon[1].Index].Vertex1;
-                    var center2VertexNumber = newEdges[2 * polygon[2].Index].Vertex1;
-                    var center3VertexNumber = newEdges[2 * polygon[3].Index].Vertex1;
-                    var centerXVertexNumber = vertices.AddAndReturnIndex(GetLocalVertexPosition(
-                        0.5f * (vertices[center0VertexNumber] + vertices[center2VertexNumber])));
+                    var polygonInnerEdges = new int[polygon.Count];
+                    for (var m = 0; m < polygon.Count; m++)
+                    {
+                        var edgeLink = polygon[m];
+                        var edgeCentre = edgesRemap[edgeLink.Index].CenterVertex;
+                        polygonInnerEdges[m] = newEdges.AddAndReturnIndex(new(edgeCentre, polygonCenter));
+                    }
 
-                    var edge0Number = newEdges.AddAndReturnIndex(new(center0VertexNumber, centerXVertexNumber));
-                    var edge1Number = newEdges.AddAndReturnIndex(new(center1VertexNumber, centerXVertexNumber));
-                    var edge2Number = newEdges.AddAndReturnIndex(new(center2VertexNumber, centerXVertexNumber));
-                    var edge3Number = newEdges.AddAndReturnIndex(new(center3VertexNumber, centerXVertexNumber));
-
-                    newPolygons.Add(new(
-                        GetEdgeHalf(polygon[0], false),
-                        GetEdgeHalf(polygon[1], true),
-                        new(edge1Number, false),
-                        new(edge0Number, true)));
-
-                    newPolygons.Add(new(
-                        GetEdgeHalf(polygon[1], false),
-                        GetEdgeHalf(polygon[2], true),
-                        new(edge2Number, false),
-                        new(edge1Number, true)));
-
-                    newPolygons.Add(new(
-                        GetEdgeHalf(polygon[2], false),
-                        GetEdgeHalf(polygon[3], true),
-                        new(edge3Number, false),
-                        new(edge2Number, true)));
-
-                    newPolygons.Add(new(
-                        GetEdgeHalf(polygon[3], false),
-                        GetEdgeHalf(polygon[0], true),
-                        new(edge0Number, false),
-                        new(edge3Number, true)));
+                    for (var m = 0; m < polygon.Count; m++)
+                    {
+                        var nextEdgeNumber = (m + 1) % polygon.Count;
+                        newPolygons.Add(new(
+                            GetEdgeHalf(polygon[m], false),
+                            GetEdgeHalf(polygon[nextEdgeNumber], true),
+                            new(polygonInnerEdges[nextEdgeNumber], false),
+                            new(polygonInnerEdges[m], true)));
+                    }
 
                     EdgeLink GetEdgeHalf(EdgeLink oldLink, bool firstHalf)
                     {
-                        //newEdgeNumber = 2 * oldEdgeNumber, 2 * oldEdgeNumber + 1
                         return new (
                             oldLink.Reversed ^ firstHalf
-                                ? 2 * oldLink.Index
-                                : 2 * oldLink.Index + 1,
+                                ? edgesRemap[oldLink.Index].FirstEdge
+                                : edgesRemap[oldLink.Index].LastEdge,
                             oldLink.Reversed);
                     }
                 }
@@ -110,84 +122,8 @@ namespace SpaceFox
 
             return new(vertices, edges, polygons);
         }
-        
-        private static MeshTriangledEdged GetSphereFromCubeLegacy(int recursiveDepth)
-        {
-            var cube = MeshTriangledEdged.GetCube();
-            var (vertices, edges, triangles) = (cube.Vertices, cube.Edges, cube.Triangles);
-            for (var i = 0; i < vertices.Count; i++)
-                vertices[i] = vertices[i] * Radius + Center;
 
-            for (var i = 0; i < vertices.Count; i++)
-                vertices[i] = GetLocalVertexPosition(vertices[i]);
-
-            for (var i = 0; i < recursiveDepth; i++)
-            {
-                var newEdges = new List<Edge>();
-                var newTriangles = new List<MeshTriangledEdged.Triangle>();
-
-                foreach (var edge in edges)
-                {
-                    var center = GetEdgeCenter(edge);
-                    var centerNumber = vertices.AddAndReturnIndex(center);
-
-                    newEdges.Add(new(edge.Vertex0, centerNumber));
-                    newEdges.Add(new(centerNumber, edge.Vertex1));
-
-                    Vector3 GetEdgeCenter(Edge edge)
-                        => GetLocalVertexPosition(0.5f * (vertices[edge.Vertex0] + vertices[edge.Vertex1]));
-                }
-
-                foreach (var triangle in triangles)
-                {
-                    //New Edges
-                    var center0VertexNumber = newEdges[2 * triangle.Edge0.Index].Vertex1;
-                    var center1VertexNumber = newEdges[2 * triangle.Edge1.Index].Vertex1;
-                    var center2VertexNumber = newEdges[2 * triangle.Edge2.Index].Vertex1;
-
-                    var edge01Number = newEdges.AddAndReturnIndex(new(center0VertexNumber, center1VertexNumber));
-                    var edge12Number = newEdges.AddAndReturnIndex(new(center1VertexNumber, center2VertexNumber));
-                    var edge20Number = newEdges.AddAndReturnIndex(new(center2VertexNumber, center0VertexNumber));
-
-                    newTriangles.Add(new(
-                        GetEdgeHalf(triangle.Edge2, true),
-                        GetEdgeHalf(triangle.Edge0, false),
-                        new(edge20Number, true)));
-
-                    newTriangles.Add(new(
-                        GetEdgeHalf(triangle.Edge0, true),
-                        GetEdgeHalf(triangle.Edge1, false),
-                        new(edge01Number, true)));
-
-                    newTriangles.Add(new(
-                        GetEdgeHalf(triangle.Edge1, true),
-                        GetEdgeHalf(triangle.Edge2, false),
-                        new(edge12Number, true)));
-
-                    newTriangles.Add(new(
-                        new(edge01Number, false),
-                        new(edge12Number, false),
-                        new(edge20Number, false)));
-
-                    EdgeLink GetEdgeHalf(EdgeLink oldLink, bool secondHalf)
-                    {
-                        //newEdgeNumber = 2 * oldEdgeNumber, 2 * oldEdgeNumber + 1
-                        return new (
-                            oldLink.Reversed ^ secondHalf
-                                ? 2 * oldLink.Index + 1
-                                : 2 * oldLink.Index,
-                            oldLink.Reversed);
-                    }
-                }
-
-                edges = newEdges;
-                triangles = newTriangles;
-            }
-
-            return new(vertices, edges, triangles);
-        }
-
-        private static Vector3 GetLocalVertexPosition(Vector3 position)
-            => Center + Radius * (position - Center).normalized;
+        private static Vector3 GetLocalVertexPosition(Vector3 position, Vector3 center, float radius)
+            => Center + radius * (position - center).normalized;
     }
 }

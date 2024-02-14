@@ -36,6 +36,16 @@ namespace SpaceFox
                 return true;
 
             }
+
+            public Vector3 GetCenter(List<Vector3> vertices, List<Edge> edges)
+            {
+                var sum = Vector3.zero;
+                foreach (var link in this)
+                    sum += vertices[link.GetFirstVertexIndex(edges)];
+                sum /= Count;
+
+                return sum;
+            }
         }
 
         public List<Vector3> Vertices { get; }

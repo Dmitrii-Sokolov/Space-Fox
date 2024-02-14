@@ -9,7 +9,6 @@ namespace SpaceFox
     {
         public struct Triangle
         {
-
             public EdgeLink Edge0 { get; private set; }
             public EdgeLink Edge1 { get; private set; }
             public EdgeLink Edge2 { get; private set; }
@@ -82,6 +81,11 @@ namespace SpaceFox
 
             public MeshPolygoned.Polygon ToPolygon()
                 => new(Edge0, Edge1, Edge2);
+
+            public Vector3 GetCenter(List<Vector3> vertices, List<Edge> edges)
+                => (vertices[Edge0.GetFirstVertexIndex(edges)] +
+                    vertices[Edge1.GetFirstVertexIndex(edges)] +
+                    vertices[Edge2.GetFirstVertexIndex(edges)]) / 3f;
         }
 
         public List<Vector3> Vertices { get; }
