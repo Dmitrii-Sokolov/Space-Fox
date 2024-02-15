@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
@@ -69,6 +70,14 @@ namespace SpaceFox
             Polygons = polygons.ToList();
         }
 
+        public MeshPolygoned(
+            IEnumerable<Vector3> vertices,
+            IEnumerable<Edge> edges,
+            IEnumerable<Polygon> polygons,
+            Vector3 offset,
+            float scale) : this(vertices, edges, polygons)
+            => MoveAndScale(offset, scale);
+
         public int[] GetTrianglesAsPlainArray()
         {
             var trianglesCount = Polygons.Sum(p => Mathf.Max(p.Count - 2, 0));
@@ -127,34 +136,66 @@ namespace SpaceFox
             return this;
         }
 
-        public static MeshPolygoned GetTetrahedron(Vector3 center)
-            => GetTetrahedron().MoveAndScale(center, 1f);
+        public static MeshPolygoned GetPrimitive(PrimitiveType primitiveType, float size)
+            => GetPrimitive(primitiveType, Vector3.zero, size);
+
+        public static MeshPolygoned GetPrimitive(PrimitiveType primitiveType, Vector3 center = default, float size = 1f)
+        {
+            switch (primitiveType)
+            {
+                case PrimitiveType.Quad:
+                    return GetQuad(center, size);
+
+                case PrimitiveType.Tetrahedron:
+                    return GetTetrahedron(center, size);
+
+                case PrimitiveType.Cube:
+                    return GetCube(center, size);
+
+                default:
+                    throw new NotImplementedException();
+            }
+        }
+
+        public static MeshPolygoned GetQuad(float side)
+            => GetQuad(Vector3.zero, side);
+
+        public static MeshPolygoned GetQuad(Vector3 center = default, float side = 1f)
+        {
+            var vertices = new List<Vector3>()
+            {
+                new(-0.5f, 0f, -0.5f),
+                new(-0.5f, 0f,  0.5f),
+                new(0.5f, 0f, -0.5f),
+                new(0.5f, 0f,  0.5f),
+            };
+
+            var edges = new List<Edge>()
+            {
+                new(0, 1),
+                new(0, 2),
+                new(2, 3),
+                new(1, 3),
+            };
+
+            var polygons = new List<Polygon>()
+            {
+                new((0, false), (3, false), (2, true), (1, true))
+            };
+
+            return new MeshPolygoned(vertices, edges, polygons, center, side);
+        }
 
         public static MeshPolygoned GetTetrahedron(float radius)
-            => GetTetrahedron().MoveAndScale(Vector3.zero, radius);
+            => GetTetrahedron(Vector3.zero, radius);
 
-        public static MeshPolygoned GetTetrahedron(Vector3 center, float radius)
-            => GetTetrahedron().MoveAndScale(center, radius);
-
-        /// <summary>
-        /// Get Tetrahedron with center in (0f, 0f, 0f) and radius 1f
-        /// </summary>
-        public static MeshPolygoned GetTetrahedron()
-            => MeshTriangledEdged.GetTetrahedron().ToMeshPolygoned();
-
-        public static MeshPolygoned GetCube(Vector3 center)
-            => GetCube().MoveAndScale(center, 1f);
+        public static MeshPolygoned GetTetrahedron(Vector3 center = default, float radius = 1f)
+            => MeshTriangledEdged.GetTetrahedron(center, radius).ToMeshPolygoned();
 
         public static MeshPolygoned GetCube(float side)
-            => GetCube().MoveAndScale(Vector3.zero, side);
+            => GetCube(Vector3.zero, side);
 
-        public static MeshPolygoned GetCube(Vector3 center, float side)
-            => GetCube().MoveAndScale(center, side);
-
-        /// <summary>
-        /// Get Cube with center in (0f, 0f, 0f) and side 1f
-        /// </summary>
-        public static MeshPolygoned GetCube()
+        public static MeshPolygoned GetCube(Vector3 center = default, float side = 1f)
         {
             var vertices = new List<Vector3>()
             {
@@ -196,7 +237,7 @@ namespace SpaceFox
                 new( (8, true), (9, false), (10, false), (11, true)),
             };
 
-            return new(vertices, edges, polygons);
+            return new(vertices, edges, polygons, center, side);
         }
     }
 }

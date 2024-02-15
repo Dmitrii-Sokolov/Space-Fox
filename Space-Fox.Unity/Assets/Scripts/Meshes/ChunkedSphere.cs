@@ -15,21 +15,24 @@ namespace SpaceFox
 
         private readonly ObservableValue<int> RecursiveDepth = new();
         private readonly ObservableValue<float> Radius = new();
+        private readonly ObservableValue<PrimitiveType> PrimitiveType = new();
 
         private bool IsDirty = false;
 
-        [SerializeField]
-        [Range(0, 7)] private int CurrentRecursiveDepth = 3;
+        [Range(0, 7)]
+        [SerializeField] private int CurrentRecursiveDepth = default;
 
-        [SerializeField]
-        [Range(0.1f, 100f)] private float CurrentRadius = 10f;
+        [Range(0.1f, 100f)]
+        [SerializeField] private float CurrentRadius = default;
+
+        [SerializeField] private PrimitiveType CurrentPrimitiveType = default;
 
         protected override void AwakeBeforeDestroy()
         {
-            //TODO Add Primitive choosing
-
             RecursiveDepth.Subscribe(_ => IsDirty = true).While(this);
             Radius.Subscribe(_ => IsDirty = true).While(this);
+            PrimitiveType.Subscribe(_ => IsDirty = true).While(this);
+
             UpdateProxy.Update.Subscribe(OnUpdate).While(this);
         }
 
@@ -37,6 +40,7 @@ namespace SpaceFox
         {
             RecursiveDepth.Value = CurrentRecursiveDepth;
             Radius.Value = CurrentRadius;
+            PrimitiveType.Value = CurrentPrimitiveType;
 
             if (IsDirty)
             {
@@ -47,7 +51,11 @@ namespace SpaceFox
 
         private void RegenerageMesh()
         {
-            var sphere = GetSphereFromCube(RecursiveDepth.Value, Center, Radius.Value);
+            var sphere = GetSphereFromCube(
+                RecursiveDepth.Value,
+                Center,
+                Radius.Value,
+                PrimitiveType.Value);
 
             var mesh = new Mesh();
 
@@ -56,9 +64,13 @@ namespace SpaceFox
             GetComponent<MeshFilter>().mesh = mesh;
         }
 
-        private static MeshPolygoned GetSphereFromCube(int recursiveDepth, Vector3 center, float radius)
+        private static MeshPolygoned GetSphereFromCube(
+            int recursiveDepth,
+            Vector3 center,
+            float radius,
+            PrimitiveType primitiveType)
         {
-            var cube = MeshPolygoned.GetTetrahedron(center, radius);
+            var cube = MeshPolygoned.GetPrimitive(primitiveType, center);
 
             var (vertices, edges, polygons) = (cube.Vertices, cube.Edges, cube.Polygons);
 
