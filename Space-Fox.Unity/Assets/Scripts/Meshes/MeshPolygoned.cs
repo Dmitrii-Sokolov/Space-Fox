@@ -190,7 +190,35 @@ namespace SpaceFox
             => GetTetrahedron(Vector3.zero, radius);
 
         public static MeshPolygoned GetTetrahedron(Vector3 center = default, float radius = 1f)
-            => MeshTriangledEdged.GetTetrahedron(center, radius).ToMeshPolygoned();
+        {
+            var vertices = new List<Vector3>()
+            {
+                new(Mathf.Sqrt(8f / 9f), 0, -1f / 3f),
+                new(-Mathf.Sqrt(2f / 9f), -Mathf.Sqrt(2f / 3f), -1f / 3f),
+                new(-Mathf.Sqrt(2f / 9f), Mathf.Sqrt(2f / 3f), -1f / 3f),
+                new(0, 0, 1),
+            };
+
+            var edges = new List<Edge>()
+            {
+                new(0, 1),
+                new(0, 2),
+                new(0, 3),
+                new(1, 2),
+                new(1, 3),
+                new(2, 3),
+            };
+
+            var polygons = new List<Polygon>()
+            {
+                new((0, false), (3, false), (1, true)),
+                new((0, true), (2, false), (4, true)),
+                new((1, false), (5, false), (2, true)),
+                new((3, true), (4, false), (5, true)),
+            };
+
+            return new(vertices, edges, polygons, center, radius);
+        }
 
         public static MeshPolygoned GetCube(float side)
             => GetCube(Vector3.zero, side);

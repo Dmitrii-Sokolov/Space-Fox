@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 namespace SpaceFox
@@ -68,15 +69,26 @@ namespace SpaceFox
         public List<Vector3> Vertices { get; }
         public List<Triangle> Triangles { get; }
 
-        public MeshTriangled() : this(new(), new())
+        public MeshTriangled() : this(
+            new Vector3[0],
+            new Triangle[0])
         {
         }
 
-        public MeshTriangled(List<Vector3> vertices, List<Triangle> triangles)
+        public MeshTriangled(
+            IEnumerable<Vector3> vertices,
+            IEnumerable<Triangle> triangles)
         {
-            Vertices = vertices;
-            Triangles = triangles;
+            Vertices = vertices.ToList();
+            Triangles = triangles.ToList();
         }
+
+        public MeshTriangled(
+            IEnumerable<Vector3> vertices,
+            IEnumerable<Triangle> triangles,
+            Vector3 offset,
+            float scale) : this(vertices, triangles)
+            => MoveAndScale(offset, scale);
 
         public int[] GetTrianglesAsPlainArray()
         {
@@ -118,50 +130,53 @@ namespace SpaceFox
             return this;
         }
 
-        public MeshTriangledEdged ToMeshTriangledEdged()
+        public static MeshTriangled GetPrimitive(PrimitiveType primitiveType, float size)
+            => GetPrimitive(primitiveType, Vector3.zero, size);
+
+        public static MeshTriangled GetPrimitive(PrimitiveType primitiveType, Vector3 center = default, float size = 1f)
         {
-            var vertices = Vertices.MakeCopy();
-
-            var edges = new List<Edge>();
-            var triangles = new List<MeshTriangledEdged.Triangle>();
-
-            foreach (var triangle in Triangles)
+            switch (primitiveType)
             {
-                var edge01 = new Edge(triangle.Vertex0, triangle.Vertex1);
-                var edge12 = new Edge(triangle.Vertex1, triangle.Vertex2);
-                var edge20 = new Edge(triangle.Vertex2, triangle.Vertex0);
+                case PrimitiveType.Quad:
+                    return GetQuad(center, size);
 
-                triangles.Add(new(GetEdge(edge01),GetEdge(edge12), GetEdge(edge20)));
+                case PrimitiveType.Tetrahedron:
+                    return GetTetrahedron(center, size);
 
-                EdgeLink GetEdge(Edge edge)
-                {
-                    for (var i = 0; i < edges.Count; i++)
-                    {
-                        if (edges[i] == edge)
-                            return new EdgeLink(i, edge.Vertex0 != edges[i].Vertex0);
-                    }
-                    
-                    var newEdgeIndex = edges.AddAndReturnIndex(edge);
-                    return new(newEdgeIndex, false);
-                }
+                case PrimitiveType.Cube:
+                    return GetCube(center, size);
+
+                default:
+                    throw new NotImplementedException();
             }
-
-            return new(vertices, edges, triangles);
         }
 
-        public static MeshTriangled GetTetrahedron(Vector3 center)
-            => GetTetrahedron().MoveAndScale(center, 1f);
+        public static MeshTriangled GetQuad(float side)
+            => GetQuad(Vector3.zero, side);
+
+        public static MeshTriangled GetQuad(Vector3 center = default, float side = 1f)
+        {
+            var vertices = new List<Vector3>()
+            {
+                new(-0.5f, 0f, -0.5f),
+                new(-0.5f, 0f,  0.5f),
+                new(0.5f, 0f, -0.5f),
+                new(0.5f, 0f,  0.5f),
+            };
+
+            var triangles = new List<Triangle>()
+            {
+                new(0, 1, 2),
+                new(3, 2, 1),
+            };
+
+            return new MeshTriangled(vertices, triangles, center, side);
+        }
 
         public static MeshTriangled GetTetrahedron(float radius)
-            => GetTetrahedron().MoveAndScale(Vector3.zero, radius);
+            => GetTetrahedron(Vector3.zero, radius);
 
-        public static MeshTriangled GetTetrahedron(Vector3 center, float radius)
-            => GetTetrahedron().MoveAndScale(center, radius);
-
-        /// <summary>
-        /// Get Tetrahedron with center in (0f, 0f, 0f) and radius 1f
-        /// </summary>
-        public static MeshTriangled GetTetrahedron()
+        public static MeshTriangled GetTetrahedron(Vector3 center = default, float radius = 1f)
         {
             var vertices = new List<Vector3>()
             {
@@ -179,22 +194,13 @@ namespace SpaceFox
                 new(3, 1, 0)
             };
 
-            return new(vertices, triangles);
+            return new(vertices, triangles, center, radius);
         }
 
-        public static MeshTriangled GetCube(Vector3 center)
-            => GetTetrahedron().MoveAndScale(center, 1f);
-
         public static MeshTriangled GetCube(float side)
-            => GetTetrahedron().MoveAndScale(Vector3.zero, side);
+            => GetCube(Vector3.zero, side);
 
-        public static MeshTriangled GetCube(Vector3 center, float side)
-            => GetTetrahedron().MoveAndScale(center, side);
-        
-        /// <summary>
-        /// Get Cube with center in (0f, 0f, 0f) and side 1f
-        /// </summary>
-        public static MeshTriangled GetCube()
+        public static MeshTriangled GetCube(Vector3 center = default, float side = 1f)
         {
             var vertices = new List<Vector3>()
             {
@@ -224,7 +230,7 @@ namespace SpaceFox
                 new(3, 5, 7),
             };
 
-            return new(vertices, triangles);
+            return new(vertices, triangles, center, side);
         }
     }
 }
