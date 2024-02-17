@@ -128,6 +128,14 @@ namespace SpaceFox
             Edges.AddRange(newEdges);
         }
 
+        public MeshPolygoned TransformVertices(Func<Vector3, Vector3> transformer)
+        {
+            for (var i = 0; i < Vertices.Count; i++)
+                Vertices[i] = transformer(Vertices[i]);
+
+            return this;
+        }
+
         public MeshPolygoned MoveAndScale(Vector3 offset, float scale)
         {
             for (var i = 0; i < Vertices.Count; i++)
@@ -143,6 +151,9 @@ namespace SpaceFox
         {
             switch (primitiveType)
             {
+                case PrimitiveType.Triangle:
+                    return GetTriangle(center, size);
+
                 case PrimitiveType.Quad:
                     return GetQuad(center, size);
 
@@ -157,6 +168,33 @@ namespace SpaceFox
             }
         }
 
+        public static MeshPolygoned GetTriangle(float side)
+            => GetTriangle(Vector3.zero, side);
+
+        public static MeshPolygoned GetTriangle(Vector3 center = default, float side = 1f)
+        {
+            var vertices = new List<Vector3>()
+            {
+                new(        Mathf.Sqrt(1f / 3f),    0f, 0f),
+                new(-0.5f * Mathf.Sqrt(1f / 3f), -0.5f, 0f),
+                new(-0.5f * Mathf.Sqrt(1f / 3f),  0.5f, 0f),
+            };
+
+            var edges = new List<Edge>()
+            {
+                new(0, 1),
+                new(1, 2),
+                new(2, 0),
+            };
+
+            var polygons = new List<Polygon>()
+            {
+                new((0, false), (1, false), (2, false))
+            };
+
+            return new MeshPolygoned(vertices, edges, polygons, center, side);
+        }
+
         public static MeshPolygoned GetQuad(float side)
             => GetQuad(Vector3.zero, side);
 
@@ -164,10 +202,10 @@ namespace SpaceFox
         {
             var vertices = new List<Vector3>()
             {
-                new(-0.5f, 0f, -0.5f),
-                new(-0.5f, 0f,  0.5f),
-                new(0.5f, 0f, -0.5f),
-                new(0.5f, 0f,  0.5f),
+                new(-0.5f, -0.5f, 0f),
+                new(-0.5f,  0.5f, 0f),
+                new( 0.5f, -0.5f, 0f),
+                new( 0.5f,  0.5f, 0f),
             };
 
             var edges = new List<Edge>()
@@ -186,17 +224,17 @@ namespace SpaceFox
             return new MeshPolygoned(vertices, edges, polygons, center, side);
         }
 
-        public static MeshPolygoned GetTetrahedron(float radius)
-            => GetTetrahedron(Vector3.zero, radius);
+        public static MeshPolygoned GetTetrahedron(float side)
+            => GetTetrahedron(Vector3.zero, side);
 
-        public static MeshPolygoned GetTetrahedron(Vector3 center = default, float radius = 1f)
+        public static MeshPolygoned GetTetrahedron(Vector3 center = default, float side = 1f)
         {
             var vertices = new List<Vector3>()
             {
-                new(Mathf.Sqrt(8f / 9f), 0, -1f / 3f),
-                new(-Mathf.Sqrt(2f / 9f), -Mathf.Sqrt(2f / 3f), -1f / 3f),
-                new(-Mathf.Sqrt(2f / 9f), Mathf.Sqrt(2f / 3f), -1f / 3f),
-                new(0, 0, 1),
+                new( Mathf.Sqrt(1f / 3f),                   0f, -Mathf.Sqrt(1f / 24f)),
+                new(-Mathf.Sqrt(1f / 12f), -Mathf.Sqrt(1f / 4f), -Mathf.Sqrt(1f / 24f)),
+                new(-Mathf.Sqrt(1f / 12f),  Mathf.Sqrt(1f / 4f), -Mathf.Sqrt(1f / 24f)),
+                new(                   0,                   0f,  Mathf.Sqrt(3f / 8f)  ),
             };
 
             var edges = new List<Edge>()
@@ -212,12 +250,12 @@ namespace SpaceFox
             var polygons = new List<Polygon>()
             {
                 new((0, false), (3, false), (1, true)),
-                new((0, true), (2, false), (4, true)),
+                new((0,  true), (2, false), (4, true)),
                 new((1, false), (5, false), (2, true)),
-                new((3, true), (4, false), (5, true)),
+                new((3,  true), (4, false), (5, true)),
             };
 
-            return new(vertices, edges, polygons, center, radius);
+            return new(vertices, edges, polygons, center, side);
         }
 
         public static MeshPolygoned GetCube(float side)

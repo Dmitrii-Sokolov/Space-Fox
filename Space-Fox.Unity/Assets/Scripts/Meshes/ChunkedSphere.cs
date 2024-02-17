@@ -51,7 +51,7 @@ namespace SpaceFox
 
         private void RegenerageMesh()
         {
-            var sphere = GetSphereFromCube(
+            var sphere = GetSphere(
                 RecursiveDepth.Value,
                 Center,
                 Radius.Value,
@@ -64,18 +64,19 @@ namespace SpaceFox
             GetComponent<MeshFilter>().mesh = mesh;
         }
 
-        private static MeshPolygoned GetSphereFromCube(
+        private static MeshPolygoned GetSphere(
             int recursiveDepth,
             Vector3 center,
             float radius,
             PrimitiveType primitiveType)
         {
-            var cube = MeshPolygoned.GetPrimitive(primitiveType, center);
+            var primitive = MeshPolygoned.GetPrimitive(
+                primitiveType, 
+                center + (primitiveType.IsPlanar() ? 0.01f * Vector3.back : Vector3.zero));
 
-            var (vertices, edges, polygons) = (cube.Vertices, cube.Edges, cube.Polygons);
+            primitive.TransformVertices(v => GetLocalVertexPosition(v, center, radius));
 
-            for (var i = 0; i < vertices.Count; i++)
-                vertices[i] = GetLocalVertexPosition(vertices[i], center, radius);
+            var (vertices, edges, polygons) = (primitive.Vertices, primitive.Edges, primitive.Polygons);
 
             for (var i = 0; i < recursiveDepth; i++)
             {
