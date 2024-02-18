@@ -96,3 +96,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 71b7db986d06d7542ada0fe0a8ab1a55, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  CurrentRecursiveDepth: 0
+  CurrentRadius: 1
+  CurrentPrimitiveType: 0

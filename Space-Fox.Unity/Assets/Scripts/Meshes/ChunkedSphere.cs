@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using UnityEngine;
 using Zenject;
 
@@ -51,11 +50,7 @@ namespace SpaceFox
 
         private void RegenerageMesh()
         {
-            var sphere = GetSphere(
-                RecursiveDepth.Value,
-                Center,
-                Radius.Value,
-                PrimitiveType.Value);
+            var sphere = GetSphere();
 
             var mesh = new Mesh();
 
@@ -64,79 +59,21 @@ namespace SpaceFox
             GetComponent<MeshFilter>().mesh = mesh;
         }
 
-        private static MeshPolygoned GetSphere(
-            int recursiveDepth,
-            Vector3 center,
-            float radius,
-            PrimitiveType primitiveType)
+        private MeshPolygoned GetSphere()
         {
-            var primitive = MeshPolygoned.GetPrimitive(
-                primitiveType, 
-                center + (primitiveType.IsPlanar() ? 0.01f * Vector3.back : Vector3.zero));
+            var primitiveType = PrimitiveType.Value;
+            var center = Center + (primitiveType.IsPlanar() ? 0.01f * Vector3.back : Vector3.zero);
 
-            primitive.TransformVertices(v => GetLocalVertexPosition(v, center, radius));
+            var mesh = MeshPolygoned.GetPrimitive(primitiveType, center)
+                .TransformVertices(GetLocalVertexPosition);
 
-            var (vertices, edges, polygons) = (primitive.Vertices, primitive.Edges, primitive.Polygons);
+            for (var i = 0; i < RecursiveDepth.Value; i++)
+                mesh.Subdivide(GetLocalVertexPosition);
 
-            for (var i = 0; i < recursiveDepth; i++)
-            {
-                var newEdges = new List<Edge>(2 * edges.Count + 4 * polygons.Count);
-                var newPolygons = new List<MeshPolygoned.Polygon>(4 * polygons.Count);
-                var edgesRemap = new (int FirstEdge, int LastEdge, int CenterVertex)[edges.Count];
-
-                for (var l = 0; l < edges.Count; l++)
-                {
-                    var edge = edges[l];
-                    var edgeCenter = GetLocalVertexPosition(0.5f * (vertices[edge.Vertex0] + vertices[edge.Vertex1]), center, radius);
-                    var centerNumber = vertices.AddAndReturnIndex(edgeCenter);
-
-                    edgesRemap[l] = (
-                        newEdges.AddAndReturnIndex(new(edge.Vertex0, centerNumber)),
-                        newEdges.AddAndReturnIndex(new(centerNumber, edge.Vertex1)),
-                        centerNumber);
-                }
-
-                foreach (var polygon in polygons)
-                {
-                    var polygonCenter = vertices.AddAndReturnIndex(
-                        GetLocalVertexPosition(polygon.GetCenter(vertices, edges), center, radius));
-
-                    var polygonInnerEdges = new int[polygon.Count];
-                    for (var m = 0; m < polygon.Count; m++)
-                    {
-                        var edgeLink = polygon[m];
-                        var edgeCentre = edgesRemap[edgeLink.Index].CenterVertex;
-                        polygonInnerEdges[m] = newEdges.AddAndReturnIndex(new(edgeCentre, polygonCenter));
-                    }
-
-                    for (var m = 0; m < polygon.Count; m++)
-                    {
-                        var nextEdgeNumber = (m + 1) % polygon.Count;
-                        newPolygons.Add(new(
-                            GetEdgeHalf(polygon[m], false),
-                            GetEdgeHalf(polygon[nextEdgeNumber], true),
-                            new(polygonInnerEdges[nextEdgeNumber], false),
-                            new(polygonInnerEdges[m], true)));
-                    }
-
-                    EdgeLink GetEdgeHalf(EdgeLink oldLink, bool firstHalf)
-                    {
-                        return new (
-                            oldLink.Reversed ^ firstHalf
-                                ? edgesRemap[oldLink.Index].FirstEdge
-                                : edgesRemap[oldLink.Index].LastEdge,
-                            oldLink.Reversed);
-                    }
-                }
-
-                edges = newEdges;
-                polygons = newPolygons;
-            }
-
-            return new(vertices, edges, polygons);
+            return mesh;
         }
 
-        private static Vector3 GetLocalVertexPosition(Vector3 position, Vector3 center, float radius)
-            => Center + radius * (position - center).normalized;
+        private Vector3 GetLocalVertexPosition(Vector3 position)
+            => Center + Radius.Value * (position - Center).normalized;
     }
 }

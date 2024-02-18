@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using UnityEngine;
 
 namespace SpaceFox
 {
@@ -41,6 +43,9 @@ namespace SpaceFox
             Vertex0 = vertex0;
             Vertex1 = vertex1;
         }
+
+        public Vector3 GetCenter(List<Vector3> vertices)
+            => 0.5f * (vertices[Vertex0] + vertices[Vertex1]);
 
         public override readonly bool Equals(object obj)
             => obj is Edge edge && this == edge;

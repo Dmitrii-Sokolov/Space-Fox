@@ -144,6 +144,77 @@ namespace SpaceFox
             return this;
         }
 
+        public MeshPolygoned Subdivide(Func<Vector3, Vector3> vertesTransform = null)
+        {
+            var newPolygonsCount = Polygons.Sum(p => p.Count);
+            var newEdgesCount = 2 * Edges.Count + newPolygonsCount;
+
+            var newEdges = new List<Edge>(newEdgesCount);
+            var newPolygons = new List<Polygon>(newPolygonsCount);
+
+            var edgesRemap = new (int FirstEdge, int LastEdge, int CenterVertex)[Edges.Count];
+
+            for (var l = 0; l < Edges.Count; l++)
+            {
+                var edge = Edges[l];
+                var edgeCenter = edge.GetCenter(Vertices);
+
+                if (vertesTransform != null)
+                    edgeCenter = vertesTransform(edgeCenter);
+
+                var edgeCenterIndex = Vertices.AddAndReturnIndex(edgeCenter);
+
+                edgesRemap[l] = (
+                    newEdges.AddAndReturnIndex(new(edge.Vertex0, edgeCenterIndex)),
+                    newEdges.AddAndReturnIndex(new(edgeCenterIndex, edge.Vertex1)),
+                    edgeCenterIndex);
+            }
+
+            foreach (var polygon in Polygons)
+            {
+                var polygonCenter = polygon.GetCenter(Vertices, Edges);
+                if (vertesTransform != null)
+                    polygonCenter = vertesTransform(polygonCenter);
+
+                var centerIndex = Vertices.AddAndReturnIndex(polygonCenter);
+
+                var polygonInnerEdges = new int[polygon.Count];
+                for (var m = 0; m < polygon.Count; m++)
+                {
+                    var edgeLink = polygon[m];
+                    var edgeCentre = edgesRemap[edgeLink.Index].CenterVertex;
+                    polygonInnerEdges[m] = newEdges.AddAndReturnIndex(new(edgeCentre, centerIndex));
+                }
+
+                for (var m = 0; m < polygon.Count; m++)
+                {
+                    var nextEdgeNumber = (m + 1) % polygon.Count;
+                    newPolygons.Add(new(
+                        GetEdgeHalf(polygon[m], false),
+                        GetEdgeHalf(polygon[nextEdgeNumber], true),
+                        new(polygonInnerEdges[nextEdgeNumber], false),
+                        new(polygonInnerEdges[m], true)));
+                }
+
+                EdgeLink GetEdgeHalf(EdgeLink oldLink, bool firstHalf)
+                {
+                    return new(
+                        oldLink.Reversed ^ firstHalf
+                            ? edgesRemap[oldLink.Index].FirstEdge
+                            : edgesRemap[oldLink.Index].LastEdge,
+                        oldLink.Reversed);
+                }
+            }
+
+            Edges.Clear();
+            Edges.AddRange(newEdges);
+
+            Polygons.Clear();
+            Polygons.AddRange(newPolygons);
+
+            return this;
+        }
+
         public static MeshPolygoned GetPrimitive(PrimitiveType primitiveType, float size)
             => GetPrimitive(primitiveType, Vector3.zero, size);
 
