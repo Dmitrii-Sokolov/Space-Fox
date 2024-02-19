@@ -5,12 +5,14 @@ namespace SpaceFox
 {
     public static class ObservableExtension
     {
+        //This doesn't work. Why?
         public static IDisposable Subscribe<T>(
             this IObservable<T> observable,
             Action<T> next,
             Action completed = null)
             => Subscribe(observable, next, DefaultErrorCallback, completed);
 
+        //This doesn't work. Why?
         public static IDisposable Subscribe<T>(
             this IObservable<T> observable, 
             Action<T> next, 

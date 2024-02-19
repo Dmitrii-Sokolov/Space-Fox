@@ -1,4 +1,5 @@
-﻿using Zenject;
+﻿using UnityEngine;
+using Zenject;
 
 namespace SpaceFox
 {
@@ -7,6 +8,7 @@ namespace SpaceFox
         public override void InstallBindings()
         {
             Container.BindInterfacesAndSelfTo<UpdateProxy>().FromNewComponentOnNewGameObject().AsSingle();
+            Container.BindFactory<Transform, UpdateType, ObservableTransform, ObservableTransform.Factory>();
         }
     }
 }
