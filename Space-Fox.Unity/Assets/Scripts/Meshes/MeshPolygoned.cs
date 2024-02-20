@@ -215,6 +215,21 @@ namespace SpaceFox
             return this;
         }
 
+        public static MeshPolygoned GetPolygon(params Vector3[] vertices)
+        {
+            var edges = new Edge[vertices.Length];
+            for (var i = 0; i < vertices.Length; i++)
+                edges[i] = new(i, (i + 1) % vertices.Length);
+
+            var edgeLinks = new EdgeLink[vertices.Length];
+            for (var i = 0; i < vertices.Length; i++)
+                edgeLinks[i] = new(i, false);
+
+            var polygons = new Polygon[] { new(edgeLinks) };
+
+            return new(vertices, edges, polygons);
+        }
+
         public static MeshPolygoned GetPrimitive(PrimitiveType primitiveType, float size)
             => GetPrimitive(primitiveType, Vector3.zero, size);
 

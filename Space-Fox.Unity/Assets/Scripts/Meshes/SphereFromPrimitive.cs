@@ -6,7 +6,7 @@ namespace SpaceFox
 {
     [RequireComponent(typeof(MeshFilter))]
     [RequireComponent(typeof(MeshRenderer))]
-    public class ChunkedSphere : DisposableMonoBehaviour
+    public class SphereFromPrimitive : DisposableMonoBehaviour
     {
         private static readonly Vector3 Center = Vector3.zero;
 
