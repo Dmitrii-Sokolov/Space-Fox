@@ -2,7 +2,7 @@
 
 namespace SpaceFox
 {
-    public static class MeshExtention
+    public static class MeshExtension
     {
         public static void MakeRibbed(this Mesh mesh)
         {
