@@ -19,7 +19,8 @@ namespace SpaceFox
             {
             }
 
-            public Polygon(IEnumerable<EdgeLink> edges) : base(edges)
+            public Polygon(IEnumerable<EdgeLink> edges)
+                : base(edges)
             {
             }
 
@@ -43,6 +44,16 @@ namespace SpaceFox
                 var sum = Vector3.zero;
                 foreach (var link in this)
                     sum += vertices[link.GetFirstVertexIndex(edges)];
+                sum /= Count;
+
+                return sum;
+            }
+
+            public Vector3 GetCenter(MeshPolygoned mesh)
+            {
+                var sum = Vector3.zero;
+                foreach (var link in this)
+                    sum += mesh.Vertices[link.GetFirstVertexIndex(mesh.Edges)];
                 sum /= Count;
 
                 return sum;
