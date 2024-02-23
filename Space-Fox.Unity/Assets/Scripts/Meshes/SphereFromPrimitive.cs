@@ -28,12 +28,15 @@ namespace SpaceFox
 
         protected override void AwakeBeforeDestroy()
         {
-            RecursiveDepth.Subscribe(_ => IsDirty = true).While(this);
-            Radius.Subscribe(_ => IsDirty = true).While(this);
-            PrimitiveType.Subscribe(_ => IsDirty = true).While(this);
+            RecursiveDepth.Subscribe(SetDirty).While(this);
+            Radius.Subscribe(SetDirty).While(this);
+            PrimitiveType.Subscribe(SetDirty).While(this);
 
             UpdateProxy.Update.Subscribe(OnUpdate).While(this);
         }
+
+        private void SetDirty()
+            => IsDirty = true;
 
         private void OnUpdate()
         {

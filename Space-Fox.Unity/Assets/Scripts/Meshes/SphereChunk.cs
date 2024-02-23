@@ -41,12 +41,15 @@ namespace SpaceFox
             Observer = ObservableTransformFactory.Create(TrackedTransform, UpdateType.Update);
             Self = ObservableTransformFactory.Create(transform, UpdateType.Update);
 
-            Observer.Position.Subscribe(_ => IsDirty = true).While(this);
-            Self.Position.Subscribe(_ => IsDirty = true).While(this);
-            Radius.Subscribe(_ => IsDirty = true).While(this);
+            Observer.Position.Subscribe(SetDirty).While(this);
+            Self.Position.Subscribe(SetDirty).While(this);
+            Radius.Subscribe(SetDirty).While(this);
 
             UpdateProxy.LateUpdate.Subscribe(OnLateUpdate).While(this);
         }
+
+        private void SetDirty()
+            => IsDirty = true;
 
         private void OnLateUpdate()
         {
