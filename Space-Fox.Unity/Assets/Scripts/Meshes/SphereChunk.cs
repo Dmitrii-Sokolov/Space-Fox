@@ -89,17 +89,52 @@ namespace SpaceFox
                 direction + localUp - localForward,
             };
 
+            //Will try to find barycentric coordinates of vectorToSurface in this orthant
+            var topNormal = Vector3.Cross(orthant[0], orthant[3]);
+            var bottomNormal = Vector3.Cross(orthant[1], orthant[2]);
+            var y = DecomppositeByPlanes(vectorToSurface, topNormal, bottomNormal);
+
+            var forwardNormal = Vector3.Cross(orthant[0], orthant[1]);
+            var backNormal = Vector3.Cross(orthant[2], orthant[3]);
+            var x = DecomppositeByPlanes(vectorToSurface, backNormal, forwardNormal);
+
             for (var i = 0; i < orthant.Length; i++)
                 orthant[i] = GetLocalVertexPosition(orthant[i]);
 
             var mesh = MeshPolygoned.GetPolygon(orthant);
 
-            var distance = vectorToSurface.magnitude;
+            var distance = vectorToSurface.magnitude - Radius.Value;
 
             //for (var i = 0; i < RecursiveDepth.Value; i++)
             //    mesh.Subdivide(GetLocalVertexPosition);
 
             return mesh;
+        }
+
+        private float DecomppositeByPlanes(Vector3 vector, Vector3 normal0, Vector3 normal1)
+        {
+            //Slice is the plane, that is perpendicular to two basis planes
+            var sliceNormal = Vector3.Cross(normal0, normal1).normalized;
+
+            //Directions of the intersections of planes with slice
+            var direction0 = Vector3.Cross(normal0, sliceNormal);
+            var direction1 = Vector3.Cross(normal1, sliceNormal);
+            var vectorProjectionToSlice = vector - sliceNormal * Vector3.Dot(sliceNormal, vector);
+            var (a, b) = DecompositeByBasis(vectorProjectionToSlice, direction0, direction1);
+            return a / (a + b);
+        }
+
+        private (float X, float Y) DecompositeByBasis(Vector3 vector, Vector3 base0, Vector3 base1)
+        {
+            //Using Gaussian elimination method
+            var ab = Vector3.Dot(base0, base1);
+            var a2 = Vector3.Dot(base0, base0);
+            var b2 = Vector3.Dot(base1, base1);
+            var va = Vector3.Dot(vector, base0);
+            var vb = Vector3.Dot(vector, base1);
+            var y = (vb - va * ab / a2) / (b2 - ab * ab / a2);
+            var x = (va - y * ab) / a2;
+            return (x, y);
         }
 
         private Vector3 GetLocalVertexPosition(Vector3 position)
