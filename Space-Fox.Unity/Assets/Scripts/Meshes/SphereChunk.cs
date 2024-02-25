@@ -90,13 +90,13 @@ namespace SpaceFox
             };
 
             //Will try to find barycentric coordinates of vectorToSurface in this orthant
-            var topNormal = Vector3.Cross(orthant[0], orthant[3]);
-            var bottomNormal = Vector3.Cross(orthant[1], orthant[2]);
-            var y = DecomppositeByPlanes(vectorToSurface, topNormal, bottomNormal);
-
-            var forwardNormal = Vector3.Cross(orthant[0], orthant[1]);
             var backNormal = Vector3.Cross(orthant[2], orthant[3]);
+            var forwardNormal = Vector3.Cross(orthant[1], orthant[0]);
             var x = DecomppositeByPlanes(vectorToSurface, backNormal, forwardNormal);
+
+            var bottomNormal = Vector3.Cross(orthant[2], orthant[1]);
+            var topNormal = Vector3.Cross(orthant[3], orthant[0]);
+            var y = DecomppositeByPlanes(vectorToSurface, bottomNormal, topNormal);
 
             for (var i = 0; i < orthant.Length; i++)
                 orthant[i] = GetLocalVertexPosition(orthant[i]);
@@ -121,17 +121,17 @@ namespace SpaceFox
             var direction1 = Vector3.Cross(normal1, sliceNormal);
             var vectorProjectionToSlice = vector - sliceNormal * Vector3.Dot(sliceNormal, vector);
             var (a, b) = DecompositeByBasis(vectorProjectionToSlice, direction0, direction1);
-            return a / (a + b);
+            return Mathf.Abs(b) / (Mathf.Abs(a) + Mathf.Abs(b));
         }
 
-        private (float X, float Y) DecompositeByBasis(Vector3 vector, Vector3 base0, Vector3 base1)
+        private (float X, float Y) DecompositeByBasis(Vector3 vector, Vector3 baseA, Vector3 baseB)
         {
             //Using Gaussian elimination method
-            var ab = Vector3.Dot(base0, base1);
-            var a2 = Vector3.Dot(base0, base0);
-            var b2 = Vector3.Dot(base1, base1);
-            var va = Vector3.Dot(vector, base0);
-            var vb = Vector3.Dot(vector, base1);
+            var ab = Vector3.Dot(baseA, baseB);
+            var a2 = Vector3.Dot(baseA, baseA);
+            var b2 = Vector3.Dot(baseB, baseB);
+            var va = Vector3.Dot(vector, baseA);
+            var vb = Vector3.Dot(vector, baseB);
             var y = (vb - va * ab / a2) / (b2 - ab * ab / a2);
             var x = (va - y * ab) / a2;
             return (x, y);
