@@ -3,8 +3,17 @@ using UnityEngine;
 
 namespace SpaceFox
 {
+    public abstract class ObservableValue
+    {
+#if UNITY_EDITOR
+        public abstract string[] ValueFieldNames { get; }
+        public abstract void InvokeCallbacks();
+#endif
+    }
+
     [Serializable]
     public class ObservableValue<T> :
+        ObservableValue,
         IObservableValue<T>,
         IReadOnlyObservableValue<T>,
         IObservable<T>,
@@ -13,6 +22,10 @@ namespace SpaceFox
     {
         private readonly ObserversComposer<T> ObserversComposer = new();
         private readonly ObserversComposer<(T, T)> MemorableObserversComposer = new();
+
+#if UNITY_EDITOR
+        private T TOldValue = default;
+#endif
 
         [SerializeField] private T TValue = default;
 
@@ -26,14 +39,28 @@ namespace SpaceFox
             {
                 if (!Equals(value, TValue))
                 {
+#if UNITY_EDITOR
+                    TOldValue = TValue;
+#endif
+
                     var oldValue = TValue;
                     TValue = value;
 
                     MemorableObserversComposer.OnNext((oldValue, TValue));
-                    ObserversComposer.OnNext(value);
+                    ObserversComposer.OnNext(TValue);
                 }
             }
         }
+
+#if UNITY_EDITOR
+        public override string[] ValueFieldNames => new string[] {nameof(TValue) };
+
+        public override void InvokeCallbacks()
+        {
+            MemorableObserversComposer.OnNext((TOldValue, TValue));
+            ObserversComposer.OnNext(TValue);
+        }
+#endif
 
         public ObservableValue() : this(default)
         {

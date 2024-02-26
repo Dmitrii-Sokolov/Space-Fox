@@ -1,5 +1,4 @@
-﻿using System;
-using UnityEngine;
+﻿using UnityEngine;
 using Zenject;
 
 namespace SpaceFox
@@ -12,19 +11,11 @@ namespace SpaceFox
 
         [Inject] private readonly UpdateProxy UpdateProxy = default;
 
-        private readonly ObservableValue<int> RecursiveDepth = new();
-        private readonly ObservableValue<float> Radius = new();
-        private readonly ObservableValue<PrimitiveType> PrimitiveType = new();
+        [SerializeField] private ObservableValue<int> RecursiveDepth = new();
+        [SerializeField] private ObservableValue<float> Radius = new(1f);
+        [SerializeField] private ObservableValue<PrimitiveType> PrimitiveType = new();
 
         private bool IsDirty = false;
-
-        [Range(0, 7)]
-        [SerializeField] private int CurrentRecursiveDepth = default;
-
-        [Range(0.1f, 100f)]
-        [SerializeField] private float CurrentRadius = default;
-
-        [SerializeField] private PrimitiveType CurrentPrimitiveType = default;
 
         protected override void AwakeBeforeDestroy()
         {
@@ -40,10 +31,6 @@ namespace SpaceFox
 
         private void OnUpdate()
         {
-            RecursiveDepth.Value = CurrentRecursiveDepth;
-            Radius.Value = CurrentRadius;
-            PrimitiveType.Value = CurrentPrimitiveType;
-
             if (IsDirty)
             {
                 IsDirty = false;

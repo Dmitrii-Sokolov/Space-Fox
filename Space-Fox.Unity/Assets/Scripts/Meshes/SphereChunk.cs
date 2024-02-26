@@ -1,5 +1,4 @@
-﻿using System;
-using UnityEngine;
+﻿using UnityEngine;
 using Zenject;
 
 namespace SpaceFox
@@ -21,15 +20,12 @@ namespace SpaceFox
         [Inject] private readonly UpdateProxy UpdateProxy = default;
         [Inject] private readonly ObservableTransform.Factory ObservableTransformFactory = default;
 
-        private readonly ObservableValue<float> Radius = new();
+        [SerializeField] private ObservableValue<float> Radius = new();
 
         private ObservableTransform Observer;
         private ObservableTransform Self;
 
         private bool IsDirty = false;
-
-        [Range(0.1f, 100f)]
-        [SerializeField] private float CurrentRadius = default;
 
         [SerializeField] private Transform TrackedTransform = default;
 
@@ -53,8 +49,6 @@ namespace SpaceFox
 
         private void OnLateUpdate()
         {
-            Radius.Value = CurrentRadius;
-
             if (IsDirty)
             {
                 IsDirty = false;
