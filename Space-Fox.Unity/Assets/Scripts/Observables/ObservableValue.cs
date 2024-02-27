@@ -5,10 +5,6 @@ namespace SpaceFox
 {
     public abstract class ObservableValue
     {
-#if UNITY_EDITOR
-        public abstract string[] ValueFieldNames { get; }
-        public abstract void InvokeCallbacks();
-#endif
     }
 
     [Serializable]
@@ -23,10 +19,6 @@ namespace SpaceFox
         private readonly ObserversComposer<T> ObserversComposer = new();
         private readonly ObserversComposer<(T, T)> MemorableObserversComposer = new();
 
-#if UNITY_EDITOR
-        private T TOldValue = default;
-#endif
-
         [SerializeField] private T TValue = default;
 
         public T Value
@@ -39,10 +31,6 @@ namespace SpaceFox
             {
                 if (!Equals(value, TValue))
                 {
-#if UNITY_EDITOR
-                    TOldValue = TValue;
-#endif
-
                     var oldValue = TValue;
                     TValue = value;
 
@@ -51,16 +39,6 @@ namespace SpaceFox
                 }
             }
         }
-
-#if UNITY_EDITOR
-        public override string[] ValueFieldNames => new string[] {nameof(TValue) };
-
-        public override void InvokeCallbacks()
-        {
-            MemorableObserversComposer.OnNext((TOldValue, TValue));
-            ObserversComposer.OnNext(TValue);
-        }
-#endif
 
         public ObservableValue() : this(default)
         {
