@@ -20,6 +20,7 @@ namespace SpaceFox
         [Inject] private readonly UpdateProxy UpdateProxy = default;
         [Inject] private readonly ObservableTransform.Factory ObservableTransformFactory = default;
 
+        [Slider(0.1f, 10f)]
         [SerializeField] private ObservableValue<float> Radius = new();
 
         private ObservableTransform Observer;

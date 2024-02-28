@@ -11,8 +11,12 @@ namespace SpaceFox
 
         [Inject] private readonly UpdateProxy UpdateProxy = default;
 
+        [Slider(0, 7)]
         [SerializeField] private ObservableValue<int> RecursiveDepth = new();
+
+        [Slider(0.1f, 10f)]
         [SerializeField] private ObservableValue<float> Radius = new(1f);
+
         [SerializeField] private ObservableValue<PrimitiveType> PrimitiveType = new();
 
         private bool IsDirty = false;
