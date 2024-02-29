@@ -23,6 +23,12 @@ namespace SpaceFox
         [Slider(0.1f, 10f)]
         [SerializeField] private ObservableValue<float> Radius = new();
 
+        [Slider(0.1f, 10f)]
+        [SerializeField] private ObservableValue<float> AreaSize = new();
+
+        [Slider(0.1f, 10f)]
+        [SerializeField] private ObservableValue<float> TriangleSize = new();
+
         private ObservableTransform Observer;
         private ObservableTransform Self;
 
@@ -40,6 +46,8 @@ namespace SpaceFox
 
             Observer.Position.Subscribe(SetDirty).While(this);
             Self.Position.Subscribe(SetDirty).While(this);
+            TriangleSize.Subscribe(SetDirty).While(this);
+            AreaSize.Subscribe(SetDirty).While(this);
             Radius.Subscribe(SetDirty).While(this);
 
             UpdateProxy.LateUpdate.Subscribe(OnLateUpdate).While(this);
@@ -76,7 +84,14 @@ namespace SpaceFox
             var localUp = rotation * Vector3.up;
             var localForward = rotation * Vector3.forward;
 
-            var orthant = new Vector3[4]
+            //TODO This can be caching / used with 'IsDirty' check by: x, y, direction
+            //TODO I can use real polygon side instead CubeSideDirections
+            //TODO Check with other meshes, not cubes
+            //TODO Simplify sector dividing
+            //TODO Add height noise
+            //TODO Add neighbours quad
+
+            var sector = new Vector3[4]
             {
                 direction + localUp + localForward,
                 direction - localUp + localForward,
@@ -84,24 +99,49 @@ namespace SpaceFox
                 direction + localUp - localForward,
             };
 
+            var size = Mathf.Sqrt(Mathf.Min(
+                (sector[0] - sector[1]).sqrMagnitude,
+                (sector[1] - sector[2]).sqrMagnitude,
+                (sector[2] - sector[3]).sqrMagnitude,
+                (sector[3] - sector[0]).sqrMagnitude));
+
+            var divider = 1 << (Mathf.RoundToInt(Mathf.Log(size / AreaSize.Value, 2)));
+            //TODo Check if x y is numbers or not
+
             //Will try to find barycentric coordinates of vectorToSurface in this orthant
-            var backNormal = Vector3.Cross(orthant[2], orthant[3]);
-            var forwardNormal = Vector3.Cross(orthant[1], orthant[0]);
+            var backNormal = Vector3.Cross(sector[2], sector[3]);
+            var forwardNormal = Vector3.Cross(sector[1], sector[0]);
             var x = DecomppositeByPlanes(vectorToSurface, backNormal, forwardNormal);
 
-            var bottomNormal = Vector3.Cross(orthant[2], orthant[1]);
-            var topNormal = Vector3.Cross(orthant[3], orthant[0]);
+            sector = new Vector3[4]
+            {
+                Vector3.Slerp(sector[3], sector[0], (Mathf.Floor(x * divider) + 1) / divider),
+                Vector3.Slerp(sector[2], sector[1], (Mathf.Floor(x * divider) + 1) / divider),
+                Vector3.Slerp(sector[2], sector[1], Mathf.Floor(x * divider) / divider),
+                Vector3.Slerp(sector[3], sector[0], Mathf.Floor(x * divider) / divider),
+            };
+
+            var bottomNormal = Vector3.Cross(sector[2], sector[1]);
+            var topNormal = Vector3.Cross(sector[3], sector[0]);
             var y = DecomppositeByPlanes(vectorToSurface, bottomNormal, topNormal);
 
-            for (var i = 0; i < orthant.Length; i++)
-                orthant[i] = GetLocalVertexPosition(orthant[i]);
+            sector = new Vector3[]
+            {
+                Vector3.Slerp(sector[1], sector[0], (Mathf.Floor(y * divider) + 1) / divider),
+                Vector3.Slerp(sector[1], sector[0], Mathf.Floor(y * divider) / divider),
+                Vector3.Slerp(sector[2], sector[3], Mathf.Floor(y * divider) / divider),
+                Vector3.Slerp(sector[2], sector[3], (Mathf.Floor(y * divider) + 1) / divider),
+            };
 
-            var mesh = MeshPolygoned.GetPolygon(orthant);
+            for (var i = 0; i < sector.Length; i++)
+                sector[i] = GetLocalVertexPosition(sector[i]);
 
-            var distance = vectorToSurface.magnitude - Radius.Value;
+            var mesh = MeshPolygoned.GetPolygon(sector);
 
-            //for (var i = 0; i < RecursiveDepth.Value; i++)
-            //    mesh.Subdivide(GetLocalVertexPosition);
+            var subdivider = Mathf.RoundToInt(Mathf.Log(AreaSize.Value / TriangleSize.Value, 2));
+
+            for (var i = 0; i < subdivider; i++)
+                mesh.Subdivide(GetLocalVertexPosition);
 
             return mesh;
         }
