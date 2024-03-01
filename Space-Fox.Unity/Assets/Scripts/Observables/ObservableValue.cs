@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace SpaceFox
 {
-    public abstract class ObservableValue
+    public abstract class ObservableValue : DisposableComposer
     {
     }
 
@@ -40,8 +40,12 @@ namespace SpaceFox
             }
         }
 
+        public IReadOnlyObservableValue<T> ReadOnly => this;
+
         public ObservableValue() : this(default)
         {
+            ObserversComposer.While(this);
+            MemorableObserversComposer.While(this);
         }
 
         public ObservableValue(T value)
@@ -59,12 +63,6 @@ namespace SpaceFox
                 observer.OnNext(Value);
 
             return ObserversComposer.Subscribe(observer);
-        }
-
-        public void Dispose()
-        {
-            ObserversComposer.Dispose();
-            MemorableObserversComposer.Dispose();
         }
     }
 }

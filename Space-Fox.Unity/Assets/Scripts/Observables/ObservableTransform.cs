@@ -1,42 +1,45 @@
 ﻿using System;
 using UnityEngine;
-using Zenject;
 
 namespace SpaceFox
 {
-    public class ObservableTransform : DisposableComposer, IDisposable
+    [Serializable]
+    public class ObservableTransform : ObservableValue<Transform>
     {
-        public class Factory : PlaceholderFactory<Transform, UpdateType, ObservableTransform> { }
-
         private readonly ObservableValue<Vector3> PositionInternal = new();
         private readonly ObservableValue<Quaternion> RotationInternal = new();
-
-        public Transform Transform { get; private set; }
 
         public IReadOnlyObservableValue<Vector3> Position => PositionInternal;
         public IReadOnlyObservableValue<Quaternion> Rotation => RotationInternal;
 
-        public ObservableTransform(Transform transform, UpdateType updateType, UpdateProxy updateProxy)
+        public ObservableTransform() : this(default)
         {
-            Transform = transform;
-            UpdateValue();
+        }
 
-            updateProxy.GetUpdate(updateType).Subscribe(UpdateValue).While(this);
+        public ObservableTransform(Transform value) : base(value)
+        {
             PositionInternal.While(this);
             RotationInternal.While(this);
         }
 
+        public IDisposable SetUpdateProvider(ISubscriptionProvider provider, bool initializeValues = true)
+        {
+            if (initializeValues)
+                UpdateValue();
+
+            var unsubscribe = provider.Subscribe(UpdateValue);
+
+            unsubscribe.While(this);
+
+            return unsubscribe;
+        }
+
         private void UpdateValue()
         {
-            if (Transform == null)
+            if (Value != null)
             {
-                Transform = null;
-                Dispose();
-            }
-            else
-            {
-                PositionInternal.Value = Transform.position;
-                RotationInternal.Value = Transform.rotation;
+                PositionInternal.Value = Value.position;
+                RotationInternal.Value = Value.rotation;
             }
         }
     }

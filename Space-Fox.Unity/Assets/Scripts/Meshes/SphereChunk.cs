@@ -29,26 +29,24 @@ namespace SpaceFox
         [Slider(0.1f, 10f)]
         [SerializeField] private ObservableValue<float> TriangleSize = new();
 
-        private ObservableTransform Observer;
-        private ObservableTransform Self;
+        [SerializeField] private ObservableTransform Observer = new();
+        [SerializeField] private ObservableTransform Self = new();
 
         private bool IsDirty = false;
-
-        [SerializeField] private Transform TrackedTransform = default;
 
         protected override void AwakeBeforeDestroy()
         {
             //TODO Check rotation when calculation quadrant
             //TODO Generate whole sphere when far
 
-            Observer = ObservableTransformFactory.Create(TrackedTransform, UpdateType.Update);
-            Self = ObservableTransformFactory.Create(transform, UpdateType.Update);
-
+            Radius.Subscribe(SetDirty).While(this);
+            AreaSize.Subscribe(SetDirty).While(this);
+            TriangleSize.Subscribe(SetDirty).While(this);
             Observer.Position.Subscribe(SetDirty).While(this);
             Self.Position.Subscribe(SetDirty).While(this);
-            TriangleSize.Subscribe(SetDirty).While(this);
-            AreaSize.Subscribe(SetDirty).While(this);
-            Radius.Subscribe(SetDirty).While(this);
+
+            Observer.SetUpdateProvider(UpdateProxy.Update).While(this);
+            Self.SetUpdateProvider(UpdateProxy.Update).While(this);
 
             UpdateProxy.LateUpdate.Subscribe(OnLateUpdate).While(this);
         }
