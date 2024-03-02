@@ -7,18 +7,9 @@ namespace SpaceFox
     [RequireComponent(typeof(MeshRenderer))]
     public class SphereChunk : DisposableMonoBehaviour
     {
-        private static readonly Vector3 Center = Vector3.zero;
-
-        private static readonly Vector3[] CubeSideDirections = new[] {
-                Vector3.left,
-                Vector3.right,
-                Vector3.down,
-                Vector3.up,
-                Vector3.back,
-                Vector3.forward};
-
         [Inject] private readonly UpdateProxy UpdateProxy = default;
-        [Inject] private readonly ObservableTransform.Factory ObservableTransformFactory = default;
+
+        [SerializeField] private ObservableValue<Vector3> Center = new();
 
         [Slider(0.1f, 10f)]
         [SerializeField] private ObservableValue<float> Radius = new();
@@ -34,11 +25,14 @@ namespace SpaceFox
 
         private bool IsDirty = false;
 
+        private MeshPolygoned ReferenceMesh = default;
+
         protected override void AwakeBeforeDestroy()
         {
             //TODO Check rotation when calculation quadrant
             //TODO Generate whole sphere when far
 
+            Center.Subscribe(SetDirty).While(this);
             Radius.Subscribe(SetDirty).While(this);
             AreaSize.Subscribe(SetDirty).While(this);
             TriangleSize.Subscribe(SetDirty).While(this);
@@ -76,26 +70,23 @@ namespace SpaceFox
 
         private MeshPolygoned GetMesh()
         {
-            var vectorToSurface = Observer.Position.Value - Self.Position.Value;
-            var direction = CubeSideDirections.GetMax(d => Vector3.Dot(d, vectorToSurface));
-            var rotation = Quaternion.FromToRotation(Vector3.right, direction);
-            var localUp = rotation * Vector3.up;
-            var localForward = rotation * Vector3.forward;
+            var vectorToCenter = Observer.Position.Value - (Self.Position.Value + Center.Value);
+            var polygonIndex = GetNearestPolygonIndex(vectorToCenter);
+            var polygon = ReferenceMesh.Polygons[polygonIndex].GetVertices(ReferenceMesh);
 
-            //TODO This can be caching / used with 'IsDirty' check by: x, y, direction
-            //TODO I can use real polygon side instead CubeSideDirections
+            //TODO This can be caching / used with 'IsDirty' check by: x, y, polygonIndex, Center, Radius...
             //TODO Check with other meshes, not cubes
             //TODO Simplify sector dividing
             //TODO Add height noise
             //TODO Add neighbours quad
 
-            var sector = new Vector3[4]
-            {
-                direction + localUp + localForward,
-                direction - localUp + localForward,
-                direction - localUp - localForward,
-                direction + localUp - localForward,
-            };
+            //TODO BUG Center changing doesn't work correctly
+            //TODO BUG Area size affects triangle size
+
+            var sector = polygon.Length == 4 ? polygon : throw new System.ArgumentException();
+
+            //TODO Check min and max size for divisions
+            //var minSize = ReferenceMesh.Polygons[polygonIndex].GetMinSideSize(ReferenceMesh);
 
             var size = Mathf.Sqrt(Mathf.Min(
                 (sector[0] - sector[1]).sqrMagnitude,
@@ -109,7 +100,7 @@ namespace SpaceFox
             //Will try to find barycentric coordinates of vectorToSurface in this orthant
             var backNormal = Vector3.Cross(sector[2], sector[3]);
             var forwardNormal = Vector3.Cross(sector[1], sector[0]);
-            var x = DecomppositeByPlanes(vectorToSurface, backNormal, forwardNormal);
+            var x = DecomppositeByPlanes(vectorToCenter, backNormal, forwardNormal);
 
             sector = new Vector3[4]
             {
@@ -121,7 +112,7 @@ namespace SpaceFox
 
             var bottomNormal = Vector3.Cross(sector[2], sector[1]);
             var topNormal = Vector3.Cross(sector[3], sector[0]);
-            var y = DecomppositeByPlanes(vectorToSurface, bottomNormal, topNormal);
+            var y = DecomppositeByPlanes(vectorToCenter, bottomNormal, topNormal);
 
             sector = new Vector3[]
             {
@@ -143,6 +134,29 @@ namespace SpaceFox
 
             return mesh;
         }
+
+        private int GetNearestPolygonIndex(Vector3 vectorToCenter)
+        {
+            ReferenceMesh = MeshPolygoned.GetCube(Center.Value);
+
+            var polygonIndex = 0;
+            var maxProjection = GetDistanceToPolygonPlane(ReferenceMesh, polygonIndex, vectorToCenter);
+
+            for (var i = 1; i < ReferenceMesh.Polygons.Count; i++)
+            {
+                var newProjection = GetDistanceToPolygonPlane(ReferenceMesh, i, vectorToCenter);
+                if (newProjection > maxProjection)
+                {
+                    polygonIndex = i;
+                    maxProjection = newProjection;
+                }
+            }
+
+            return polygonIndex;
+        }
+
+        private float GetDistanceToPolygonPlane(MeshPolygoned mesh, int polygonIdex, Vector3 point)
+            => Vector3.Dot(mesh.Polygons[polygonIdex].GetCenter(mesh) - Center.Value, point);
 
         private float DecomppositeByPlanes(Vector3 vector, Vector3 normal0, Vector3 normal1)
         {
@@ -171,6 +185,6 @@ namespace SpaceFox
         }
 
         private Vector3 GetLocalVertexPosition(Vector3 position)
-            => Center + Radius.Value * (position - Center).normalized;
+            => Center.Value + Radius.Value * (position - Center.Value).normalized;
     }
 }
