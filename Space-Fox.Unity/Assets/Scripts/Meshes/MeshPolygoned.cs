@@ -58,6 +58,38 @@ namespace SpaceFox
 
                 return sum;
             }
+
+            public Vector3[] GetVertices(MeshPolygoned mesh)
+            {
+                var result = new Vector3[Count];
+
+                for (var i = 0; i < Count; i++)
+                    result[i] = mesh.GetFirstVertexVector(this[i]);
+
+                return result;
+            }
+
+            public float GetMinSideSize(MeshPolygoned mesh)
+                => GetExtremum(mesh, Mathf.Min);
+
+            public float GetMaxSideSize(MeshPolygoned mesh)
+                => GetExtremum(mesh, Mathf.Max);
+
+            private float GetExtremum(MeshPolygoned mesh, Func<float, float, float> extremum)
+            {
+                var result = GetSqrDistance(0, 1);
+
+                for (var n = 0; n < Count - 1; n++)
+                {
+                    for (var i = Mathf.Max(n + 1, 2); i < Count; i++)
+                        result = extremum(GetSqrDistance(n, (n + i) % Count), result);
+                }
+
+                return Mathf.Sqrt(result);
+
+                float GetSqrDistance(int i, int n)
+                    => Vector3.SqrMagnitude(mesh.GetFirstVertexVector(this[i]) - mesh.GetFirstVertexVector(this[n]));
+            }
         }
 
         public List<Vector3> Vertices { get; }
@@ -101,15 +133,12 @@ namespace SpaceFox
                     trianglesClassic.Add(GetFirstVertexIndex(polygon[i + 1]));
                     trianglesClassic.Add(GetFirstVertexIndex(polygon[^1]));
                 }
-
-                int GetFirstVertexIndex(EdgeLink edge)
-                    => edge.GetFirstVertexIndex(Edges);
             }
 
             return trianglesClassic.ToArray();
         }
 
-        public void MakeRibbed()
+        public MeshPolygoned MakeRibbed()
         {
             var verticesCount = Polygons.Sum(p => p.Count);
 
@@ -137,7 +166,12 @@ namespace SpaceFox
 
             Edges.Clear();
             Edges.AddRange(newEdges);
+
+            return this;
         }
+
+        public MeshPolygoned MakeCopy()
+            => new(Vertices, Edges, Polygons);
 
         public MeshPolygoned TransformVertices(Func<Vector3, Vector3> transformer)
         {
@@ -225,6 +259,12 @@ namespace SpaceFox
 
             return this;
         }
+
+        private int GetFirstVertexIndex(EdgeLink edge)
+            => edge.GetFirstVertexIndex(Edges);
+
+        private Vector3 GetFirstVertexVector(EdgeLink edge)
+            => Vertices[GetFirstVertexIndex(edge)];
 
         public static MeshPolygoned GetPolygon(params Vector3[] vertices)
         {

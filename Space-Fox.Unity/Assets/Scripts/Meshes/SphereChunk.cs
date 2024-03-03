@@ -29,9 +29,6 @@ namespace SpaceFox
 
         protected override void AwakeBeforeDestroy()
         {
-            //TODO Check rotation when calculation quadrant
-            //TODO Generate whole sphere when far
-
             Center.Subscribe(SetDirty).While(this);
             Radius.Subscribe(SetDirty).While(this);
             AreaSize.Subscribe(SetDirty).While(this);
@@ -72,30 +69,25 @@ namespace SpaceFox
         {
             var vectorToCenter = Observer.Position.Value - (Self.Position.Value + Center.Value);
             var polygonIndex = GetNearestPolygonIndex(vectorToCenter);
-            var polygon = ReferenceMesh.Polygons[polygonIndex].GetVertices(ReferenceMesh);
+            var polygon = ReferenceMesh.Polygons[polygonIndex];
+
+            //TODO Check rotation when calculation quadrant
+            //TODO Generate whole sphere when far
 
             //TODO This can be caching / used with 'IsDirty' check by: x, y, polygonIndex, Center, Radius...
             //TODO Check with other meshes, not cubes
             //TODO Simplify sector dividing
             //TODO Add height noise
             //TODO Add neighbours quad
+            //TODo Check if x y is numbers or not
 
             //TODO BUG Center changing doesn't work correctly
             //TODO BUG Area size affects triangle size
 
-            var sector = polygon.Length == 4 ? polygon : throw new System.ArgumentException();
+            var minSize = polygon.GetMinSideSize(ReferenceMesh);
+            var divider = 1 << (Mathf.RoundToInt(Mathf.Log(minSize / AreaSize.Value, 2)));
 
-            //TODO Check min and max size for divisions
-            //var minSize = ReferenceMesh.Polygons[polygonIndex].GetMinSideSize(ReferenceMesh);
-
-            var size = Mathf.Sqrt(Mathf.Min(
-                (sector[0] - sector[1]).sqrMagnitude,
-                (sector[1] - sector[2]).sqrMagnitude,
-                (sector[2] - sector[3]).sqrMagnitude,
-                (sector[3] - sector[0]).sqrMagnitude));
-
-            var divider = 1 << (Mathf.RoundToInt(Mathf.Log(size / AreaSize.Value, 2)));
-            //TODo Check if x y is numbers or not
+            var sector = polygon.Count == 4 ? polygon.GetVertices(ReferenceMesh) : throw new System.ArgumentException();
 
             //Will try to find barycentric coordinates of vectorToSurface in this orthant
             var backNormal = Vector3.Cross(sector[2], sector[3]);
@@ -127,7 +119,9 @@ namespace SpaceFox
 
             var mesh = MeshPolygoned.GetPolygon(sector);
 
-            var subdivider = Mathf.RoundToInt(Mathf.Log(AreaSize.Value / TriangleSize.Value, 2));
+            var maxSize = polygon.GetMaxSideSize(ReferenceMesh);
+            var currentTrianlgeSide = maxSize / divider;
+            var subdivider = Mathf.RoundToInt(Mathf.Log(currentTrianlgeSide / TriangleSize.Value, 2));
 
             for (var i = 0; i < subdivider; i++)
                 mesh.Subdivide(GetLocalVertexPosition);
