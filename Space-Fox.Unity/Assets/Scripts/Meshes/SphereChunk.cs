@@ -14,10 +14,10 @@ namespace SpaceFox
         [Slider(0.1f, 10f)]
         [SerializeField] private ObservableValue<float> Radius = new();
 
-        [Slider(0.1f, 10f)]
+        [Slider(0.1f, 2f)]
         [SerializeField] private ObservableValue<float> AreaSize = new();
 
-        [Slider(0.1f, 10f)]
+        [Slider(0.02f, 1f)]
         [SerializeField] private ObservableValue<float> TriangleSize = new();
 
         [SerializeField] private ObservableTransform Observer = new();
@@ -67,9 +67,12 @@ namespace SpaceFox
 
         private MeshPolygoned GetMesh()
         {
-            var vectorToCenter = Observer.Position.Value - (Self.Position.Value + Center.Value);
+            var observerPositionInLocalSpace = Observer.Position.Value - Self.Position.Value;
+            var vectorToCenter = observerPositionInLocalSpace - Center.Value;
             var polygonIndex = GetNearestPolygonIndex(vectorToCenter);
-            var polygon = ReferenceMesh.Polygons[polygonIndex];
+            var polygon = ReferenceMesh.PolygonsReadOnly[polygonIndex];
+
+            //TODO Add neighbours quad
 
             //TODO Check rotation when calculation quadrant
             //TODO Generate whole sphere when far
@@ -78,14 +81,10 @@ namespace SpaceFox
             //TODO Check with other meshes, not cubes
             //TODO Simplify sector dividing
             //TODO Add height noise
-            //TODO Add neighbours quad
             //TODo Check if x y is numbers or not
 
-            //TODO BUG Center changing doesn't work correctly
-            //TODO BUG Area size affects triangle size
-
-            var minSize = polygon.GetMinSideSize(ReferenceMesh);
-            var divider = 1 << (Mathf.RoundToInt(Mathf.Log(minSize / AreaSize.Value, 2)));
+            var minSize = polygon.GetMinSideSize(ReferenceMesh) * Radius.Value;
+            var divider = 1 << Mathf.Max((Mathf.RoundToInt(Mathf.Log(minSize / AreaSize.Value, 2))), 0);
 
             var sector = polygon.Count == 4 ? polygon.GetVertices(ReferenceMesh) : throw new System.ArgumentException();
 
@@ -119,19 +118,19 @@ namespace SpaceFox
 
             var mesh = MeshPolygoned.GetPolygon(sector);
 
-            var maxSize = polygon.GetMaxSideSize(ReferenceMesh);
+            var maxSize = polygon.GetMaxSideSize(ReferenceMesh) * Radius.Value;
             var currentTrianlgeSide = maxSize / divider;
             var subdivider = Mathf.RoundToInt(Mathf.Log(currentTrianlgeSide / TriangleSize.Value, 2));
 
             for (var i = 0; i < subdivider; i++)
                 mesh.Subdivide(GetLocalVertexPosition);
 
-            return mesh;
+            return mesh.MoveAndScale(Center.Value);
         }
 
         private int GetNearestPolygonIndex(Vector3 vectorToCenter)
         {
-            ReferenceMesh = MeshPolygoned.GetCube(Center.Value);
+            ReferenceMesh = MeshPolygoned.GetCube();
 
             var polygonIndex = 0;
             var maxProjection = GetDistanceToPolygonPlane(ReferenceMesh, polygonIndex, vectorToCenter);
@@ -179,6 +178,6 @@ namespace SpaceFox
         }
 
         private Vector3 GetLocalVertexPosition(Vector3 position)
-            => Center.Value + Radius.Value * (position - Center.Value).normalized;
+            => Radius.Value * position.normalized;
     }
 }

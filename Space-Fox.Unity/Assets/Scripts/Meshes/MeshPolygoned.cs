@@ -181,7 +181,7 @@ namespace SpaceFox
             return this;
         }
 
-        public MeshPolygoned MoveAndScale(Vector3 offset, float scale)
+        public MeshPolygoned MoveAndScale(Vector3 offset, float scale = 1f)
         {
             for (var i = 0; i < Vertices.Count; i++)
                 Vertices[i] = scale * Vertices[i] + offset;
