@@ -1,11 +1,9 @@
-﻿using System.Collections.Generic;
-using UnityEngine;
+﻿using UnityEngine;
 
 namespace SpaceFox
 {
     public interface IMesh
     {
-        List<Vector3> Vertices { get; }
-        int[] GetTrianglesAsPlainArray();
+        (Vector3[], int[]) GetVerticesAndTrianglesAsPlainArray();
     }
 }

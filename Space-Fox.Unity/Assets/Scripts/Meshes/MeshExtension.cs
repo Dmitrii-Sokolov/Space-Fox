@@ -25,8 +25,7 @@ namespace SpaceFox
 
         public static void ApplyData(this Mesh mesh, IMesh data)
         {
-            mesh.vertices = data.Vertices.ToArray();
-            mesh.triangles = data.GetTrianglesAsPlainArray();
+            (mesh.vertices, mesh.triangles) = data.GetVerticesAndTrianglesAsPlainArray();
 
             mesh.RecalculateBounds();
             mesh.RecalculateNormals();

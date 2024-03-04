@@ -133,11 +133,12 @@ namespace SpaceFox
             ReferenceMesh = MeshPolygoned.GetCube();
 
             var polygonIndex = 0;
-            var maxProjection = GetDistanceToPolygonPlane(ReferenceMesh, polygonIndex, vectorToCenter);
+            var maxProjection = GetDistanceToPolygonPlane(ReferenceMesh, ReferenceMesh.PolygonsReadOnly[polygonIndex], vectorToCenter);
 
-            for (var i = 1; i < ReferenceMesh.Polygons.Count; i++)
+            for (var i = 1; i < ReferenceMesh.PolygonsReadOnly.Count; i++)
             {
-                var newProjection = GetDistanceToPolygonPlane(ReferenceMesh, i, vectorToCenter);
+                var polygon = ReferenceMesh.PolygonsReadOnly[i];
+                var newProjection = GetDistanceToPolygonPlane(ReferenceMesh, polygon, vectorToCenter);
                 if (newProjection > maxProjection)
                 {
                     polygonIndex = i;
@@ -148,8 +149,8 @@ namespace SpaceFox
             return polygonIndex;
         }
 
-        private float GetDistanceToPolygonPlane(MeshPolygoned mesh, int polygonIdex, Vector3 point)
-            => Vector3.Dot(mesh.Polygons[polygonIdex].GetCenter(mesh) - Center.Value, point);
+        private float GetDistanceToPolygonPlane(MeshPolygoned mesh, MeshPolygoned.Polygon polygon, Vector3 point)
+            => Vector3.Dot(polygon.GetCenter(mesh), point);
 
         private float DecomppositeByPlanes(Vector3 vector, Vector3 normal0, Vector3 normal1)
         {

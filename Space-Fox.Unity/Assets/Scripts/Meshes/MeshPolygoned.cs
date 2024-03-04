@@ -92,9 +92,9 @@ namespace SpaceFox
             }
         }
 
-        public List<Vector3> Vertices { get; }
-        public List<Edge> Edges { get; }
-        public List<Polygon> Polygons { get; }
+        private readonly List<Vector3> Vertices;
+        private readonly List<Edge> Edges;
+        private readonly List<Polygon> Polygons;
 
         public MeshPolygoned() : this(
             new Vector3[0],
@@ -121,7 +121,7 @@ namespace SpaceFox
             float scale) : this(vertices, edges, polygons)
             => MoveAndScale(offset, scale);
 
-        public int[] GetTrianglesAsPlainArray()
+        public (Vector3[], int[]) GetVerticesAndTrianglesAsPlainArray()
         {
             var trianglesCount = Polygons.Sum(p => Mathf.Max(p.Count - 2, 0));
             var trianglesClassic = new List<int>(3 * trianglesCount);
@@ -135,7 +135,7 @@ namespace SpaceFox
                 }
             }
 
-            return trianglesClassic.ToArray();
+            return (Vertices.ToArray(), trianglesClassic.ToArray());
         }
 
         public MeshPolygoned MakeRibbed()
@@ -170,6 +170,39 @@ namespace SpaceFox
             return this;
         }
 
+        public int GetNearestPolygonIndex(Vector3 point)
+        {
+            var polygonIndex = 0;
+            var minDistance = GetDistanceToPolygonPlane(polygonIndex, point);
+
+            for (var i = 1; i < Polygons.Count; i++)
+            {
+                var newDistance = GetDistanceToPolygonPlane(i, point);
+                if (newDistance < minDistance)
+                {
+                    polygonIndex = i;
+                    minDistance = newDistance;
+                }
+            }
+
+            return polygonIndex;
+        }
+
+        public float GetDistanceToPolygonPlane(int polygonIndex, Vector3 point)
+            => Vector3.SqrMagnitude(GetPolygonCenter(polygonIndex) - point);
+
+        public Vector3 GetPolygonCenter(int polygonIndex)
+            => Polygons[polygonIndex].GetCenter(this);
+
+        public QuadVector3 GetQuad(int polygonIndex)
+            => Polygons[polygonIndex].GetQuad(this);
+
+        public float GetMinSideSize(int polygonIndex)
+            => Polygons[polygonIndex].GetMinSideSize(this);
+
+        public float GetMaxSideSize(int polygonIndex)
+            => Polygons[polygonIndex].GetMaxSideSize(this);
+
         public MeshPolygoned MakeCopy()
             => new(Vertices, Edges, Polygons);
 
@@ -189,7 +222,15 @@ namespace SpaceFox
             return this;
         }
 
-        public MeshPolygoned Subdivide(Func<Vector3, Vector3> vertesTransform = null)
+        public MeshPolygoned Subdivide(int iterations, Func<Vector3, Vector3> vertexTransform = null)
+        {
+            for (var i = 0; i < iterations; i++)
+                Subdivide(vertexTransform);
+
+            return this;
+        }
+
+        public MeshPolygoned Subdivide(Func<Vector3, Vector3> vertexTransform = null)
         {
             var newPolygonsCount = Polygons.Sum(p => p.Count);
             var newEdgesCount = 2 * Edges.Count + newPolygonsCount;
@@ -204,8 +245,8 @@ namespace SpaceFox
                 var edge = Edges[l];
                 var edgeCenter = edge.GetCenter(Vertices);
 
-                if (vertesTransform != null)
-                    edgeCenter = vertesTransform(edgeCenter);
+                if (vertexTransform != null)
+                    edgeCenter = vertexTransform(edgeCenter);
 
                 var edgeCenterIndex = Vertices.AddAndReturnIndex(edgeCenter);
 
@@ -218,8 +259,8 @@ namespace SpaceFox
             foreach (var polygon in Polygons)
             {
                 var polygonCenter = polygon.GetCenter(Vertices, Edges);
-                if (vertesTransform != null)
-                    polygonCenter = vertesTransform(polygonCenter);
+                if (vertexTransform != null)
+                    polygonCenter = vertexTransform(polygonCenter);
 
                 var centerIndex = Vertices.AddAndReturnIndex(polygonCenter);
 
@@ -266,14 +307,15 @@ namespace SpaceFox
         private Vector3 GetFirstVertexVector(EdgeLink edge)
             => Vertices[GetFirstVertexIndex(edge)];
 
-        public static MeshPolygoned GetPolygon(params Vector3[] vertices)
+        public static MeshPolygoned GetPolygon(IEnumerable<Vector3> vertices)
         {
-            var edges = new Edge[vertices.Length];
-            for (var i = 0; i < vertices.Length; i++)
-                edges[i] = new(i, (i + 1) % vertices.Length);
+            var length = vertices.Count();
+            var edges = new Edge[length];
+            for (var i = 0; i < length; i++)
+                edges[i] = new(i, (i + 1) % length);
 
-            var edgeLinks = new EdgeLink[vertices.Length];
-            for (var i = 0; i < vertices.Length; i++)
+            var edgeLinks = new EdgeLink[length];
+            for (var i = 0; i < length; i++)
                 edgeLinks[i] = new(i, false);
 
             var polygons = new Polygon[] { new(edgeLinks) };

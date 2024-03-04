@@ -66,8 +66,8 @@ namespace SpaceFox
                 => !(a == b);
         }
 
-        public List<Vector3> Vertices { get; }
-        public List<Triangle> Triangles { get; }
+        private readonly List<Vector3> Vertices;
+        private readonly List<Triangle> Triangles;
 
         public MeshTriangled() : this(
             new Vector3[0],
@@ -90,17 +90,17 @@ namespace SpaceFox
             float scale) : this(vertices, triangles)
             => MoveAndScale(offset, scale);
 
-        public int[] GetTrianglesAsPlainArray()
+        public (Vector3[], int[]) GetVerticesAndTrianglesAsPlainArray()
         {
-            var array = new int[3 * Triangles.Count];
+            var trianglesClassic = new int[3 * Triangles.Count];
 
             for (var i = 0; i < Triangles.Count; i++)
             {
                 for (var j = 0; j < 3; j++)
-                    array[3 * i + j] = Triangles[i][j];
+                    trianglesClassic[3 * i + j] = Triangles[i][j];
             }
 
-            return array;
+            return (Vertices.ToArray(), trianglesClassic.ToArray());
         }
 
         public void MakeRibbed()
