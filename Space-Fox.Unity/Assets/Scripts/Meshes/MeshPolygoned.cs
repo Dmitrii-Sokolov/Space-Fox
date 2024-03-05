@@ -59,14 +59,14 @@ namespace SpaceFox
                 return sum;
             }
 
-            public Vector3[] GetVertices(MeshPolygoned mesh)
+            public IEnumerable<Vector3> GetVertices(MeshPolygoned mesh)
+                => this.Select(edge => mesh.GetFirstVertexVector(edge));
+
+            public QuadVector3 GetQuad(MeshPolygoned mesh)
             {
-                var result = new Vector3[Count];
-
-                for (var i = 0; i < Count; i++)
-                    result[i] = mesh.GetFirstVertexVector(this[i]);
-
-                return result;
+                return Count == 4
+                    ? new QuadVector3(this.Select(edge => mesh.GetFirstVertexVector(edge)))
+                    : throw new ArgumentException();
             }
 
             public float GetMinSideSize(MeshPolygoned mesh)

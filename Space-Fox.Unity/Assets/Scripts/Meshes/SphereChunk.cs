@@ -1,4 +1,6 @@
-﻿using UnityEngine;
+﻿using System;
+using System.Collections.Generic;
+using UnityEngine;
 using Zenject;
 
 namespace SpaceFox
@@ -7,6 +9,37 @@ namespace SpaceFox
     [RequireComponent(typeof(MeshRenderer))]
     public class SphereChunk : DisposableMonoBehaviour
     {
+        private readonly struct Region : IEquatable<Region>
+        {
+            public readonly int PolygonIndex { get; }
+            public readonly int Divider { get; }
+            public readonly int SubregionX { get; }
+            public readonly int SubregionY { get; }
+            public readonly int Subdivider { get; }
+            
+            public Region(int polygonIndex, int divider, int subregionX, int subregionY, int subdivider)
+            {
+                PolygonIndex = polygonIndex;
+                Divider = divider;
+                SubregionX = subregionX;
+                SubregionY = subregionY;
+                Subdivider = subdivider;
+            }
+
+            public override int GetHashCode()
+                => HashCode.Combine(PolygonIndex, Divider, SubregionX, SubregionY, Subdivider);
+
+            public override bool Equals(object other)
+                => other is Region region && Equals(region);
+
+            public bool Equals(Region other)
+                => PolygonIndex == other.PolygonIndex &&
+                Divider == other.Divider &&
+                SubregionX == other.SubregionX &&
+                SubregionY == other.SubregionY &&
+                Subdivider == other.Subdivider;
+        }
+
         [Inject] private readonly UpdateProxy UpdateProxy = default;
 
         [SerializeField] private ObservableValue<Vector3> Center = new();
@@ -35,6 +68,7 @@ namespace SpaceFox
             TriangleSize.Subscribe(SetDirty).While(this);
             Observer.Position.Subscribe(SetDirty).While(this);
             Self.Position.Subscribe(SetDirty).While(this);
+            Self.Rotation.Subscribe(SetDirty).While(this);
 
             Observer.SetUpdateProvider(UpdateProxy.Update).While(this);
             Self.SetUpdateProvider(UpdateProxy.Update).While(this);
@@ -55,104 +89,38 @@ namespace SpaceFox
         }
 
         private void RegenerageMesh()
+              => GetComponent<MeshFilter>().mesh = GenerateMesh(CalculateRegion(), ReferenceMesh, Center.Value, Radius.Value);
+
+        private Region CalculateRegion()
         {
-            var sphere = GetMesh();
+            ReferenceMesh ??= MeshPolygoned.GetCube();
 
-            var mesh = new Mesh();
-
-            mesh.ApplyData(sphere);
-
-            GetComponent<MeshFilter>().mesh = mesh;
-        }
-
-        private MeshPolygoned GetMesh()
-        {
-            var observerPositionInLocalSpace = Observer.Position.Value - Self.Position.Value;
+            var observerPositionInLocalSpace = Self.Value.InverseTransformPoint(Observer.Position.Value);
             var vectorToCenter = observerPositionInLocalSpace - Center.Value;
-            var polygonIndex = GetNearestPolygonIndex(vectorToCenter);
-            var polygon = ReferenceMesh.PolygonsReadOnly[polygonIndex];
+            var polygonIndex = ReferenceMesh.GetNearestPolygonIndex(vectorToCenter);
 
-            //TODO Add neighbours quad
+            var minSize = ReferenceMesh.GetMinSideSize(polygonIndex) * Radius.Value;
+            var divider = 1 << Mathf.Max(Mathf.RoundToInt(Mathf.Log(minSize / AreaSize.Value, 2)), 0);
 
-            //TODO Check rotation when calculation quadrant
-            //TODO Generate whole sphere when far
-
-            //TODO This can be caching / used with 'IsDirty' check by: x, y, polygonIndex, Center, Radius...
-            //TODO Check with other meshes, not cubes
-            //TODO Simplify sector dividing
-            //TODO Add height noise
-            //TODo Check if x y is numbers or not
-
-            var minSize = polygon.GetMinSideSize(ReferenceMesh) * Radius.Value;
-            var divider = 1 << Mathf.Max((Mathf.RoundToInt(Mathf.Log(minSize / AreaSize.Value, 2))), 0);
-
-            var sector = polygon.Count == 4 ? polygon.GetVertices(ReferenceMesh) : throw new System.ArgumentException();
+            var sector = ReferenceMesh.GetQuad(polygonIndex);
 
             //Will try to find barycentric coordinates of vectorToSurface in this orthant
-            var backNormal = Vector3.Cross(sector[2], sector[3]);
-            var forwardNormal = Vector3.Cross(sector[1], sector[0]);
-            var x = DecomppositeByPlanes(vectorToCenter, backNormal, forwardNormal);
+            var x = DecompositeByPlanes(vectorToCenter, sector.LeftNormal, sector.RightNormal);
+            var xInt = Mathf.FloorToInt(x * divider);
 
-            sector = new Vector3[4]
-            {
-                Vector3.Slerp(sector[3], sector[0], (Mathf.Floor(x * divider) + 1) / divider),
-                Vector3.Slerp(sector[2], sector[1], (Mathf.Floor(x * divider) + 1) / divider),
-                Vector3.Slerp(sector[2], sector[1], Mathf.Floor(x * divider) / divider),
-                Vector3.Slerp(sector[3], sector[0], Mathf.Floor(x * divider) / divider),
-            };
+            var y = DecompositeByPlanes(vectorToCenter, sector.BottomNormal, sector.TopNormal);
+            var yInt = Mathf.FloorToInt(y * divider);
 
-            var bottomNormal = Vector3.Cross(sector[2], sector[1]);
-            var topNormal = Vector3.Cross(sector[3], sector[0]);
-            var y = DecomppositeByPlanes(vectorToCenter, bottomNormal, topNormal);
-
-            sector = new Vector3[]
-            {
-                Vector3.Slerp(sector[1], sector[0], (Mathf.Floor(y * divider) + 1) / divider),
-                Vector3.Slerp(sector[1], sector[0], Mathf.Floor(y * divider) / divider),
-                Vector3.Slerp(sector[2], sector[3], Mathf.Floor(y * divider) / divider),
-                Vector3.Slerp(sector[2], sector[3], (Mathf.Floor(y * divider) + 1) / divider),
-            };
-
-            for (var i = 0; i < sector.Length; i++)
-                sector[i] = GetLocalVertexPosition(sector[i]);
-
-            var mesh = MeshPolygoned.GetPolygon(sector);
-
-            var maxSize = polygon.GetMaxSideSize(ReferenceMesh) * Radius.Value;
+            var maxSize = ReferenceMesh.GetMaxSideSize(polygonIndex) * Radius.Value;
             var currentTrianlgeSide = maxSize / divider;
             var subdivider = Mathf.RoundToInt(Mathf.Log(currentTrianlgeSide / TriangleSize.Value, 2));
 
-            for (var i = 0; i < subdivider; i++)
-                mesh.Subdivide(GetLocalVertexPosition);
-
-            return mesh.MoveAndScale(Center.Value);
+            return new Region(polygonIndex, divider, xInt, yInt, subdivider);
         }
 
-        private int GetNearestPolygonIndex(Vector3 vectorToCenter)
-        {
-            ReferenceMesh = MeshPolygoned.GetCube();
-
-            var polygonIndex = 0;
-            var maxProjection = GetDistanceToPolygonPlane(ReferenceMesh, ReferenceMesh.PolygonsReadOnly[polygonIndex], vectorToCenter);
-
-            for (var i = 1; i < ReferenceMesh.PolygonsReadOnly.Count; i++)
-            {
-                var polygon = ReferenceMesh.PolygonsReadOnly[i];
-                var newProjection = GetDistanceToPolygonPlane(ReferenceMesh, polygon, vectorToCenter);
-                if (newProjection > maxProjection)
-                {
-                    polygonIndex = i;
-                    maxProjection = newProjection;
-                }
-            }
-
-            return polygonIndex;
-        }
-
-        private float GetDistanceToPolygonPlane(MeshPolygoned mesh, MeshPolygoned.Polygon polygon, Vector3 point)
-            => Vector3.Dot(polygon.GetCenter(mesh), point);
-
-        private float DecomppositeByPlanes(Vector3 vector, Vector3 normal0, Vector3 normal1)
+        //This works only if vectors normal0 and normal1 aren't complanar
+        //TODO Make a solution for planar case
+        private static float DecompositeByPlanes(Vector3 vector, Vector3 normal0, Vector3 normal1)
         {
             //Slice is the plane, that is perpendicular to two basis planes
             var sliceNormal = Vector3.Cross(normal0, normal1).normalized;
@@ -162,10 +130,11 @@ namespace SpaceFox
             var direction1 = Vector3.Cross(normal1, sliceNormal);
             var vectorProjectionToSlice = vector - sliceNormal * Vector3.Dot(sliceNormal, vector);
             var (a, b) = DecompositeByBasis(vectorProjectionToSlice, direction0, direction1);
+
             return Mathf.Abs(b) / (Mathf.Abs(a) + Mathf.Abs(b));
         }
 
-        private (float X, float Y) DecompositeByBasis(Vector3 vector, Vector3 baseA, Vector3 baseB)
+        private static (float X, float Y) DecompositeByBasis(Vector3 vector, Vector3 baseA, Vector3 baseB)
         {
             //Using Gaussian elimination method
             var ab = Vector3.Dot(baseA, baseB);
@@ -178,7 +147,30 @@ namespace SpaceFox
             return (x, y);
         }
 
-        private Vector3 GetLocalVertexPosition(Vector3 position)
-            => Radius.Value * position.normalized;
+        private static Mesh GenerateMesh(Region region, MeshPolygoned reference, Vector3 center, float radius)
+        {
+            //TODO Add neighbours quad
+            //TODO Generate whole sphere when far
+            //TODO Add height noise
+
+            var divider = (float)region.Divider;
+            var sector = reference.GetQuad(region.PolygonIndex);
+
+            sector.CutByX(region.SubregionX, divider, Vector3.Slerp);
+            sector.CutByY(region.SubregionY, divider, Vector3.Slerp);
+
+            var mesh = MeshPolygoned.GetPolygon(sector);
+            mesh.TransformVertices(GetRelativeHeight);
+            mesh.Subdivide(region.Subdivider, GetRelativeHeight);
+            mesh.MoveAndScale(center, radius);
+
+            var result = new Mesh();
+            result.ApplyData(mesh);
+
+            return result;
+        }
+
+        private static Vector3 GetRelativeHeight(Vector3 direction)
+            => direction.normalized;
     }
 }
