@@ -16,7 +16,7 @@ namespace SpaceFox
             public readonly int SubregionX { get; }
             public readonly int SubregionY { get; }
             public readonly int Subdivider { get; }
-            
+
             public Region(int polygonIndex, int divider, int subregionX, int subregionY, int subdivider)
             {
                 PolygonIndex = polygonIndex;
@@ -42,28 +42,36 @@ namespace SpaceFox
 
         [Inject] private readonly UpdateProxy UpdateProxy = default;
 
-        [SerializeField] private ObservableValue<Vector3> Center = new();
+        [SerializeField] private ObservableValue<Vector3> Center = default;
 
         [Slider(0.1f, 10f)]
-        [SerializeField] private ObservableValue<float> Radius = new();
+        [SerializeField] private ObservableValue<float> Radius = default;
 
         [Slider(0.1f, 2f)]
-        [SerializeField] private ObservableValue<float> AreaSize = new();
+        [SerializeField] private ObservableValue<float> AreaSize = default;
 
         [Slider(0.02f, 1f)]
-        [SerializeField] private ObservableValue<float> TriangleSize = new();
+        [SerializeField] private ObservableValue<float> TriangleSize = default;
 
-        [SerializeField] private ObservableTransform Observer = new();
-        [SerializeField] private ObservableTransform Self = new();
+        [SerializeField] private ObservableTransform Observer = default;
+        [SerializeField] private ObservableTransform Self = default;
 
         private bool IsDirty = false;
 
         private MeshPolygoned ReferenceMesh = default;
 
+        //TODO Invalidate cache with time
+        private readonly Dictionary<Region, Mesh> MeshesPool = new();
+
+        private ObservableValue<Region> CurrentRegion = new();
+
         protected override void AwakeBeforeDestroy()
         {
-            Center.Subscribe(SetDirty).While(this);
-            Radius.Subscribe(SetDirty).While(this);
+            ReferenceMesh ??= MeshPolygoned.GetCube();
+
+            Center.Subscribe(InvalidateCache).While(this);
+            Radius.Subscribe(InvalidateCache).While(this);
+
             AreaSize.Subscribe(SetDirty).While(this);
             TriangleSize.Subscribe(SetDirty).While(this);
             Observer.Position.Subscribe(SetDirty).While(this);
@@ -73,7 +81,15 @@ namespace SpaceFox
             Observer.SetUpdateProvider(UpdateProxy.Update).While(this);
             Self.SetUpdateProvider(UpdateProxy.Update).While(this);
 
+            CurrentRegion.Subscribe(RefillMeshFilter).While(this);
+
             UpdateProxy.LateUpdate.Subscribe(OnLateUpdate).While(this);
+        }
+
+        private void InvalidateCache()
+        {
+            MeshesPool.Clear();
+            SetDirty();
         }
 
         private void SetDirty()
@@ -84,17 +100,30 @@ namespace SpaceFox
             if (IsDirty)
             {
                 IsDirty = false;
-                RegenerageMesh();
+                CheckRegion();
             }
         }
 
-        private void RegenerageMesh()
-              => GetComponent<MeshFilter>().mesh = GenerateMesh(CalculateRegion(), ReferenceMesh, Center.Value, Radius.Value);
+        private void CheckRegion()
+            => CurrentRegion.Value = CalculateRegion();
+
+        private void RefillMeshFilter()
+            => GetComponent<MeshFilter>().mesh = GetMesh(CurrentRegion.Value);
+
+        private Mesh GetMesh(Region region)
+        {
+            //TODO Add neighbours quad
+            if (!MeshesPool.TryGetValue(region, out var mesh))
+            {
+                mesh = GenerateMesh(region, ReferenceMesh, Center.Value, Radius.Value);
+                MeshesPool.Add(region, mesh);
+            }
+
+            return mesh;
+        }
 
         private Region CalculateRegion()
         {
-            ReferenceMesh ??= MeshPolygoned.GetCube();
-
             var observerPositionInLocalSpace = Self.Value.InverseTransformPoint(Observer.Position.Value);
             var vectorToCenter = observerPositionInLocalSpace - Center.Value;
             var polygonIndex = ReferenceMesh.GetNearestPolygonIndex(vectorToCenter);
@@ -149,7 +178,6 @@ namespace SpaceFox
 
         private static Mesh GenerateMesh(Region region, MeshPolygoned reference, Vector3 center, float radius)
         {
-            //TODO Add neighbours quad
             //TODO Generate whole sphere when far
             //TODO Add height noise
 
