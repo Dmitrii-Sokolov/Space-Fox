@@ -55,6 +55,7 @@ namespace SpaceFox
 
         [SerializeField] private ObservableTransform Observer = default;
         [SerializeField] private ObservableTransform Self = default;
+        [SerializeField] private MeshFilter ViewPrefab = default;
 
         private bool IsDirty = false;
 
@@ -63,11 +64,16 @@ namespace SpaceFox
         //TODO Invalidate cache with time
         private readonly Dictionary<Region, Mesh> MeshesPool = new();
 
+        private SimplePool<MeshFilter, Mesh> ViewsPool;
+
+        private List<MeshFilter> CurrentViews = new();
         private ObservableValue<Region> CurrentRegion = new();
 
         protected override void AwakeBeforeDestroy()
         {
             ReferenceMesh ??= MeshPolygoned.GetCube();
+
+            ViewsPool = new(CreateView, OnGetView, OnReturnView);
 
             Center.Subscribe(InvalidateCache).While(this);
             Radius.Subscribe(InvalidateCache).While(this);
@@ -81,9 +87,28 @@ namespace SpaceFox
             Observer.SetUpdateProvider(UpdateProxy.Update).While(this);
             Self.SetUpdateProvider(UpdateProxy.Update).While(this);
 
-            CurrentRegion.Subscribe(RefillMeshFilter).While(this);
+            CurrentRegion.Subscribe(RefillMeshFilters).While(this);
 
             UpdateProxy.LateUpdate.Subscribe(OnLateUpdate).While(this);
+        }
+
+        private MeshFilter CreateView()
+        {
+            var view = Instantiate(ViewPrefab, transform);
+            view.transform.SetLocalPositionAndRotation(Vector3.zero, Quaternion.identity);
+            return view;
+        }
+
+        private void OnGetView(MeshFilter meshFilter, Mesh mesh)
+        {
+            meshFilter.gameObject.SetActive(true);
+            meshFilter.mesh = mesh;
+        }
+
+        private void OnReturnView(MeshFilter meshFilter)
+        {
+            meshFilter.gameObject.SetActive(false);
+            meshFilter.mesh = null;
         }
 
         private void InvalidateCache()
@@ -107,11 +132,34 @@ namespace SpaceFox
         private void CheckRegion()
             => CurrentRegion.Value = CalculateRegion();
 
-        private void RefillMeshFilter()
-            => GetComponent<MeshFilter>().mesh = GetMesh(CurrentRegion.Value);
-
-        private Mesh GetMesh(Region region)
+        private void RefillMeshFilters()
         {
+            var meshes = GetMeshes();
+
+            //TODO Optimise this
+            var index = 0;
+            while (index < CurrentViews.Count)
+            {
+                if (meshes.Contains(CurrentViews[index].mesh))
+                {
+                    meshes.Remove(CurrentViews[index].mesh);
+                    index++;
+                }
+                else
+                {
+                    ViewsPool.Return(CurrentViews[index]);
+                    CurrentViews.RemoveAt(index);
+                }
+            }
+
+            foreach (var mesh in meshes)
+                CurrentViews.Add(ViewsPool.Get(mesh));
+        }
+
+        private List<Mesh> GetMeshes()
+        {
+            var region = CurrentRegion.Value;
+
             //TODO Add neighbours quad
             if (!MeshesPool.TryGetValue(region, out var mesh))
             {
@@ -119,7 +167,7 @@ namespace SpaceFox
                 MeshesPool.Add(region, mesh);
             }
 
-            return mesh;
+            return new() { mesh };
         }
 
         private Region CalculateRegion()
