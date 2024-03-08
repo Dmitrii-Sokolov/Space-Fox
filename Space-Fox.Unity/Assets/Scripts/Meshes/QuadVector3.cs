@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 namespace SpaceFox
@@ -17,9 +18,10 @@ namespace SpaceFox
         public Vector3 BottomNormal => Vector3.Cross(RightBottom, LeftBottom);
         public Vector3 TopNormal => Vector3.Cross(LeftTop, RightTop);
 
-		//TODO Prevent creation with non-4 elements
         public QuadVector3(IEnumerable<Vector3> collection) : base(collection)
         {
+            if (collection.Count() != 4)
+                throw new ArgumentException();
         }
 
         public void CutByX(int x, float divider, Func<Vector3, Vector3, float, Vector3> lerp)

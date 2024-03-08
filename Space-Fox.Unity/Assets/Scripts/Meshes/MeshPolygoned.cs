@@ -63,11 +63,7 @@ namespace SpaceFox
                 => this.Select(edge => mesh.GetFirstVertexVector(edge));
 
             public QuadVector3 GetQuad(MeshPolygoned mesh)
-            {
-                return Count == 4
-                    ? new QuadVector3(this.Select(edge => mesh.GetFirstVertexVector(edge)))
-                    : throw new ArgumentException();
-            }
+                => new(GetVertices(mesh));
 
             public float GetMinSideSize(MeshPolygoned mesh)
                 => GetExtremum(mesh, Mathf.Min);

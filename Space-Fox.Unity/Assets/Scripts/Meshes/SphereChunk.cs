@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using Zenject;
 
@@ -38,6 +39,12 @@ namespace SpaceFox
                 SubregionX == other.SubregionX &&
                 SubregionY == other.SubregionY &&
                 Subdivider == other.Subdivider;
+
+            public static bool operator ==(Region a, Region b)
+                => a.Equals(b);
+
+            public static bool operator !=(Region a, Region b)
+                => !(a == b);
         }
 
         [Inject] private readonly UpdateProxy UpdateProxy = default;
@@ -58,6 +65,9 @@ namespace SpaceFox
         [SerializeField] private MeshFilter ViewPrefab = default;
 
         private bool IsDirty = false;
+        private bool IsRegionsChanged = false;
+        private Region CentralRegion = default;
+        private List<Region> Regions = new();
 
         private MeshPolygoned ReferenceMesh = default;
 
@@ -67,7 +77,6 @@ namespace SpaceFox
         private SimplePool<MeshFilter, Mesh> ViewsPool;
 
         private List<MeshFilter> CurrentViews = new();
-        private ObservableValue<Region> CurrentRegion = new();
 
         protected override void AwakeBeforeDestroy()
         {
@@ -86,8 +95,6 @@ namespace SpaceFox
 
             Observer.SetUpdateProvider(UpdateProxy.Update).While(this);
             Self.SetUpdateProvider(UpdateProxy.Update).While(this);
-
-            CurrentRegion.Subscribe(RefillMeshFilters).While(this);
 
             UpdateProxy.LateUpdate.Subscribe(OnLateUpdate).While(this);
         }
@@ -127,50 +134,15 @@ namespace SpaceFox
                 IsDirty = false;
                 CheckRegion();
             }
+
+            if (IsRegionsChanged)
+            {
+                IsRegionsChanged = false;
+                RefillMeshFilters();
+            }
         }
 
         private void CheckRegion()
-            => CurrentRegion.Value = CalculateRegion();
-
-        private void RefillMeshFilters()
-        {
-            var meshes = GetMeshes();
-
-            //TODO Optimise this
-            var index = 0;
-            while (index < CurrentViews.Count)
-            {
-                if (meshes.Contains(CurrentViews[index].mesh))
-                {
-                    meshes.Remove(CurrentViews[index].mesh);
-                    index++;
-                }
-                else
-                {
-                    ViewsPool.Return(CurrentViews[index]);
-                    CurrentViews.RemoveAt(index);
-                }
-            }
-
-            foreach (var mesh in meshes)
-                CurrentViews.Add(ViewsPool.Get(mesh));
-        }
-
-        private List<Mesh> GetMeshes()
-        {
-            var region = CurrentRegion.Value;
-
-            //TODO Add neighbours quad
-            if (!MeshesPool.TryGetValue(region, out var mesh))
-            {
-                mesh = GenerateMesh(region, ReferenceMesh, Center.Value, Radius.Value);
-                MeshesPool.Add(region, mesh);
-            }
-
-            return new() { mesh };
-        }
-
-        private Region CalculateRegion()
         {
             var observerPositionInLocalSpace = Self.Value.InverseTransformPoint(Observer.Position.Value);
             var vectorToCenter = observerPositionInLocalSpace - Center.Value;
@@ -192,7 +164,94 @@ namespace SpaceFox
             var currentTrianlgeSide = maxSize / divider;
             var subdivider = Mathf.RoundToInt(Mathf.Log(currentTrianlgeSide / TriangleSize.Value, 2));
 
-            return new Region(polygonIndex, divider, xInt, yInt, subdivider);
+            var region = CreateRegion(xInt, yInt);
+
+            if (CentralRegion == region)
+                return;
+
+            IsRegionsChanged = true;
+            CentralRegion = region;
+            Regions.Clear();
+
+            //TODO Add neighbours' polygons quad
+            //TODO Refactor this
+
+            var xNotMin = xInt > 0;
+            var xNotMax = xInt < divider - 1;
+            var yNotMin = yInt > 0;
+            var yNotMax = yInt < divider - 1;
+
+            if (xNotMin)
+            {
+                if (yNotMin)
+                    Regions.Add(CreateRegion(xInt - 1, yInt - 1));
+
+                Regions.Add(CreateRegion(xInt - 1, yInt));
+
+                if (yNotMax)
+                    Regions.Add(CreateRegion(xInt - 1, yInt + 1));
+            }
+
+            if (yNotMin)
+                Regions.Add(CreateRegion(xInt, yInt - 1));
+
+            Regions.Add(region);
+
+            if (yNotMax)
+                Regions.Add(CreateRegion(xInt, yInt + 1));
+
+            if (xNotMax)
+            {
+                if (yNotMin)
+                    Regions.Add(CreateRegion(xInt + 1, yInt - 1));
+                
+                Regions.Add(CreateRegion(xInt + 1, yInt));
+
+                if (yNotMax)
+                    Regions.Add(CreateRegion(xInt + 1, yInt + 1));
+            }
+
+            Region CreateRegion(int xr, int yr)
+                => new(polygonIndex, divider, xr, yr, subdivider);
+        }
+
+        //TODO Optimise that
+        private void RefillMeshFilters()
+        {
+            var meshes = GetMeshes().ToList();
+            var newViews = new List<MeshFilter>(meshes.Count);
+
+            foreach (var view in CurrentViews)
+            {
+                if (meshes.Contains(view.mesh))
+                {
+                    newViews.Add(view);
+                    meshes.Remove(view.mesh);
+                }
+                else
+                {
+                    ViewsPool.Return(view);
+                }
+            }
+
+            foreach (var mesh in meshes)
+                newViews.Add(ViewsPool.Get(mesh));
+
+            CurrentViews = newViews;
+        }
+
+        private IEnumerable<Mesh> GetMeshes()
+            => Regions.Select(GetMesh);
+
+        private Mesh GetMesh(Region region)
+        {
+            if (!MeshesPool.TryGetValue(region, out var mesh))
+            {
+                mesh = GenerateMesh(region, ReferenceMesh, Center.Value, Radius.Value);
+                MeshesPool.Add(region, mesh);
+            }
+
+            return mesh;
         }
 
         //This works only if vectors normal0 and normal1 aren't complanar
