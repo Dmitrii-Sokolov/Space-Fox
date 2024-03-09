@@ -12,17 +12,17 @@ namespace SpaceFox
     {
         private readonly struct Region : IEquatable<Region>
         {
-            private static readonly (int xOffset, int yOffset)[] Neighbours = new (int xOffset, int yOffset)[]
+            private static readonly Vector2Int[] Neighbours = new Vector2Int[]
             {
-                ( 0,  0),
-                ( 0,  1),
-                ( 1,  1),
-                ( 1,  0),
-                ( 1, -1),
-                ( 0, -1),
-                (-1, -1),
-                (-1,  0),
-                (-1,  1)
+                new( 0,  0),
+                new( 0,  1),
+                new( 1,  1),
+                new( 1,  0),
+                new( 1, -1),
+                new( 0, -1),
+                new(-1, -1),
+                new(-1,  0),
+                new(-1,  1)
             };
 
             public readonly int PolygonIndex { get; }
@@ -41,15 +41,7 @@ namespace SpaceFox
             }
 
             public IEnumerable<Region> GetSelfAndNeighbours()
-            {
-                foreach (var (xOffset, yOffset) in Neighbours)
-                {
-                    if (IsValidNeighbourOffset(xOffset, yOffset))
-                        yield return CreateNeighbour(xOffset, yOffset);
-                }
-
-                yield break;
-            }
+                => Neighbours.Where(IsValidNeighbourOffset).Select(CreateNeighbour);
 
             public override int GetHashCode()
                 => HashCode.Combine(PolygonIndex, Divider, SubregionX, SubregionY, Subdivider);
@@ -70,14 +62,14 @@ namespace SpaceFox
             public static bool operator !=(Region a, Region b)
                 => !(a == b);
 
-            private bool IsValidNeighbourOffset(int xOffset, int yOffset)
-                => IsValidIndex(SubregionX + xOffset) && IsValidIndex(SubregionY + yOffset);
+            private bool IsValidNeighbourOffset(Vector2Int offest)
+                => IsValidIndex(SubregionX + offest.x) && IsValidIndex(SubregionY + offest.y);
 
             private bool IsValidIndex(int index)
                 => 0 <= index && index < Divider;
 
-            private Region CreateNeighbour(int xOffset, int yOffset)
-                => new(PolygonIndex, Divider, SubregionX + xOffset, SubregionY + yOffset, Subdivider);
+            private Region CreateNeighbour(Vector2Int offest)
+                => new(PolygonIndex, Divider, SubregionX + offest.x, SubregionY + offest.y, Subdivider);
         }
 
         [Inject] private readonly UpdateProxy UpdateProxy = default;
