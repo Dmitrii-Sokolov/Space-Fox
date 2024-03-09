@@ -12,6 +12,19 @@ namespace SpaceFox
     {
         private readonly struct Region : IEquatable<Region>
         {
+            private static readonly (int xOffset, int yOffset)[] Neighbours = new (int xOffset, int yOffset)[]
+            {
+                ( 0,  0),
+                ( 0,  1),
+                ( 1,  1),
+                ( 1,  0),
+                ( 1, -1),
+                ( 0, -1),
+                (-1, -1),
+                (-1,  0),
+                (-1,  1)
+            };
+
             public readonly int PolygonIndex { get; }
             public readonly int Divider { get; }
             public readonly int SubregionX { get; }
@@ -25,6 +38,17 @@ namespace SpaceFox
                 SubregionX = subregionX;
                 SubregionY = subregionY;
                 Subdivider = subdivider;
+            }
+
+            public IEnumerable<Region> GetSelfAndNeighbours()
+            {
+                foreach (var (xOffset, yOffset) in Neighbours)
+                {
+                    if (IsValidNeighbourOffset(xOffset, yOffset))
+                        yield return CreateNeighbour(xOffset, yOffset);
+                }
+
+                yield break;
             }
 
             public override int GetHashCode()
@@ -45,6 +69,15 @@ namespace SpaceFox
 
             public static bool operator !=(Region a, Region b)
                 => !(a == b);
+
+            private bool IsValidNeighbourOffset(int xOffset, int yOffset)
+                => IsValidIndex(SubregionX + xOffset) && IsValidIndex(SubregionY + yOffset);
+
+            private bool IsValidIndex(int index)
+                => 0 <= index && index < Divider;
+
+            private Region CreateNeighbour(int xOffset, int yOffset)
+                => new(PolygonIndex, Divider, SubregionX + xOffset, SubregionY + yOffset, Subdivider);
         }
 
         [Inject] private readonly UpdateProxy UpdateProxy = default;
@@ -67,7 +100,7 @@ namespace SpaceFox
         private bool IsDirty = false;
         private bool IsRegionsChanged = false;
         private Region CentralRegion = default;
-        private List<Region> Regions = new();
+        private IEnumerable<Region> Regions = Array.Empty<Region>();
 
         private MeshPolygoned ReferenceMesh = default;
 
@@ -164,55 +197,14 @@ namespace SpaceFox
             var currentTrianlgeSide = maxSize / divider;
             var subdivider = Mathf.RoundToInt(Mathf.Log(currentTrianlgeSide / TriangleSize.Value, 2));
 
-            var region = CreateRegion(xInt, yInt);
+            var region = new Region(polygonIndex, divider, xInt, yInt, subdivider);
 
             if (CentralRegion == region)
                 return;
 
             IsRegionsChanged = true;
             CentralRegion = region;
-            Regions.Clear();
-
-            //TODO Add neighbours' polygons quad
-            //TODO Refactor this
-
-            var xNotMin = xInt > 0;
-            var xNotMax = xInt < divider - 1;
-            var yNotMin = yInt > 0;
-            var yNotMax = yInt < divider - 1;
-
-            if (xNotMin)
-            {
-                if (yNotMin)
-                    Regions.Add(CreateRegion(xInt - 1, yInt - 1));
-
-                Regions.Add(CreateRegion(xInt - 1, yInt));
-
-                if (yNotMax)
-                    Regions.Add(CreateRegion(xInt - 1, yInt + 1));
-            }
-
-            if (yNotMin)
-                Regions.Add(CreateRegion(xInt, yInt - 1));
-
-            Regions.Add(region);
-
-            if (yNotMax)
-                Regions.Add(CreateRegion(xInt, yInt + 1));
-
-            if (xNotMax)
-            {
-                if (yNotMin)
-                    Regions.Add(CreateRegion(xInt + 1, yInt - 1));
-                
-                Regions.Add(CreateRegion(xInt + 1, yInt));
-
-                if (yNotMax)
-                    Regions.Add(CreateRegion(xInt + 1, yInt + 1));
-            }
-
-            Region CreateRegion(int xr, int yr)
-                => new(polygonIndex, divider, xr, yr, subdivider);
+            Regions = CentralRegion.GetSelfAndNeighbours();
         }
 
         //TODO Optimise that
