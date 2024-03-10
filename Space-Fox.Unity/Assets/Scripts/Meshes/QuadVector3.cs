@@ -13,10 +13,10 @@ namespace SpaceFox
         public Vector3 LeftTop => this[3];
 
         public Vector3 LeftNormal => Vector3.Cross(LeftBottom, LeftTop);
-        public Vector3 RightNormal => Vector3.Cross(RightTop, RightBottom);
+        public Vector3 RightNormal => Vector3.Cross(RightBottom, RightTop);
 
         public Vector3 BottomNormal => Vector3.Cross(RightBottom, LeftBottom);
-        public Vector3 TopNormal => Vector3.Cross(LeftTop, RightTop);
+        public Vector3 TopNormal => Vector3.Cross(RightTop, LeftTop);
 
         public QuadVector3(IEnumerable<Vector3> collection) : base(collection)
         {

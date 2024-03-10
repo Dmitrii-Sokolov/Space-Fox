@@ -92,7 +92,7 @@ namespace SpaceFox
         private bool IsDirty = false;
         private bool IsRegionsChanged = false;
         private Region CentralRegion = default;
-        private IEnumerable<Region> Regions = Array.Empty<Region>();
+        private IEnumerable<Region> Regions = Enumerable.Empty<Region>();
 
         private MeshPolygoned ReferenceMesh = default;
 
@@ -172,7 +172,23 @@ namespace SpaceFox
             var observerPositionInLocalSpace = Self.Value.InverseTransformPoint(Observer.Position.Value);
             var vectorToCenter = observerPositionInLocalSpace - Center.Value;
             var polygonIndex = ReferenceMesh.GetNearestPolygonIndex(vectorToCenter);
+            var region = GetRegion(polygonIndex, vectorToCenter);
 
+            if (CentralRegion == region)
+                return;
+
+            var nearRegions = ReferenceMesh
+                .GetPolygonNeighbours(polygonIndex)
+                .Select(polygon => GetRegion(polygon, vectorToCenter))
+                .SelectMany(region => region.GetSelfAndNeighbours());
+
+            IsRegionsChanged = true;
+            CentralRegion = region;
+            Regions = CentralRegion.GetSelfAndNeighbours().Concat(nearRegions);
+        }
+
+        private Region GetRegion(int polygonIndex, Vector3 vectorToCenter)
+        {
             var minSize = ReferenceMesh.GetMinSideSize(polygonIndex) * Radius.Value;
             var divider = 1 << Mathf.Max(Mathf.RoundToInt(Mathf.Log(minSize / AreaSize.Value, 2)), 0);
 
@@ -190,13 +206,7 @@ namespace SpaceFox
             var subdivider = Mathf.RoundToInt(Mathf.Log(currentTrianlgeSide / TriangleSize.Value, 2));
 
             var region = new Region(polygonIndex, divider, xInt, yInt, subdivider);
-
-            if (CentralRegion == region)
-                return;
-
-            IsRegionsChanged = true;
-            CentralRegion = region;
-            Regions = CentralRegion.GetSelfAndNeighbours();
+            return region;
         }
 
         //TODO Optimise that
@@ -251,9 +261,10 @@ namespace SpaceFox
             var vectorProjectionToSlice = vector - sliceNormal * Vector3.Dot(sliceNormal, vector);
             var (a, b) = DecompositeByBasis(vectorProjectionToSlice, direction0, direction1);
 
-            return Mathf.Abs(b) / (Mathf.Abs(a) + Mathf.Abs(b));
+            return b / (a + b);
         }
 
+        //Solving: vector = X * baseA + Y * baseB
         private static (float X, float Y) DecompositeByBasis(Vector3 vector, Vector3 baseA, Vector3 baseB)
         {
             //Using Gaussian elimination method
