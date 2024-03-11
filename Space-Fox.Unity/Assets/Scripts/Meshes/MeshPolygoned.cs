@@ -185,16 +185,35 @@ namespace SpaceFox
         }
 
         //TODO Optimise that by storing every edge owners, my by half-edge structure
-        public IEnumerable<int> GetPolygonNeighbours(int index)
+        public bool TryGetAdjacentPolygonIndex(
+            int polygonIndex,
+            int edgeIndex,
+            out int adjacentPolygonIndex,
+            out int edgeIndexShift)
         {
-            var edges = Polygons[index].Select(edge => edge.Index);
-            for (var i = 0; i < Polygons.Count; i++)
+            adjacentPolygonIndex = default;
+            edgeIndexShift = default;
+            var edge = Polygons[polygonIndex][edgeIndex].Index;
+
+            for (var p = 0; p < Polygons.Count; p++)
             {
-                if (i != index && Polygons[i].Any(edge => edges.Contains(edge.Index)))
-                    yield return i;
+                if (polygonIndex == p)
+                    continue;
+
+                var polygon = Polygons[p];
+                for (var e = 0; e < polygon.Count; e++)
+                {
+                    if (polygon[e].Index == edge)
+                    {
+                        adjacentPolygonIndex = p;
+                        edgeIndexShift = edgeIndex - e;
+
+                        return true;
+                    }
+                }
             }
 
-            yield break;
+            return false;
         }
 
         public float GetDistanceToPolygonPlane(int polygonIndex, Vector3 point)

@@ -14,16 +14,25 @@ namespace SpaceFox
         {
             private static readonly Vector2Int[] Neighbours = new Vector2Int[]
             {
-                new( 0,  0),
-                new( 0,  1),
-                new( 1,  1),
                 new( 1,  0),
-                new( 1, -1),
                 new( 0, -1),
-                new(-1, -1),
                 new(-1,  0),
-                new(-1,  1)
+                new( 0,  1),
+                new( 0,  0),
             };
+
+            //private static readonly Vector2Int[] Neighbours = new Vector2Int[]
+            //{
+            //    new( 0,  0),
+            //    new( 0,  1),
+            //    new( 1,  1),
+            //    new( 1,  0),
+            //    new( 1, -1),
+            //    new( 0, -1),
+            //    new(-1, -1),
+            //    new(-1,  0),
+            //    new(-1,  1)
+            //};
 
             public readonly int PolygonIndex { get; }
             public readonly int Divider { get; }
@@ -40,8 +49,30 @@ namespace SpaceFox
                 Subdivider = subdivider;
             }
 
-            public IEnumerable<Region> GetSelfAndNeighbours()
-                => Neighbours.Where(IsValidNeighbourOffset).Select(CreateNeighbour);
+            public IEnumerable<Region> GetSelfAndNeighbours(MeshPolygoned referenceMesh)
+            {
+                for (var nIndex = 0; nIndex < Neighbours.Length; nIndex++)
+                {
+                    var neighbourOffset = Neighbours[nIndex];
+
+                    if (IsValidNeighbourOffset(neighbourOffset))
+                    {
+                        yield return CreateNeighbour(neighbourOffset);
+                    }
+                    //TODO Pass around vertex
+                    //!!Warning nIndex refers to Neighbours array order
+                    else if (referenceMesh.TryGetAdjacentPolygonIndex(
+                            PolygonIndex,
+                            nIndex,
+                            out var adjacentPolygonIndex,
+                            out var edgeIndexShift))
+                    {
+                        yield return CreateNeighbour(neighbourOffset, adjacentPolygonIndex, edgeIndexShift);
+                    }
+                }
+
+                yield break;
+            }
 
             public override int GetHashCode()
                 => HashCode.Combine(PolygonIndex, Divider, SubregionX, SubregionY, Subdivider);
@@ -63,13 +94,36 @@ namespace SpaceFox
                 => !(a == b);
 
             private bool IsValidNeighbourOffset(Vector2Int offest)
-                => IsValidIndex(SubregionX + offest.x) && IsValidIndex(SubregionY + offest.y);
+                => IsValidNeighbourOffset(offest.x, offest.y);
+
+            private bool IsValidNeighbourOffset(int x, int y)
+                => IsValidIndex(SubregionX + x) && IsValidIndex(SubregionY + y);
 
             private bool IsValidIndex(int index)
                 => 0 <= index && index < Divider;
 
             private Region CreateNeighbour(Vector2Int offest)
                 => new(PolygonIndex, Divider, SubregionX + offest.x, SubregionY + offest.y, Subdivider);
+
+            private Region CreateNeighbour(Vector2Int neighbourOffset, int adjacentPolygonIndex, int edgeIndexShift)
+            {
+                //TODO Add corners' quads
+                //!!Warning this formulas refers to Quad inner structure
+                var x = (SubregionX + neighbourOffset.x + Divider) % Divider;
+                var y = (SubregionY + neighbourOffset.y + Divider) % Divider;
+
+                return ((edgeIndexShift + 6) % 4) switch
+                {
+                    0 => AnotherPolygonRegion(this, x, y),
+                    1 => AnotherPolygonRegion(this, Divider - 1 - y, x),
+                    2 => AnotherPolygonRegion(this, Divider - 1 - x, Divider - 1 - y),
+                    3 => AnotherPolygonRegion(this, y, Divider - 1 - x),
+                    _ => throw new ArgumentException(),
+                };
+
+                Region AnotherPolygonRegion(Region region, int x, int y)
+                    => new(adjacentPolygonIndex, region.Divider, x, y, region.Subdivider);
+            }
         }
 
         [Inject] private readonly UpdateProxy UpdateProxy = default;
@@ -90,23 +144,18 @@ namespace SpaceFox
         [SerializeField] private MeshFilter ViewPrefab = default;
 
         private bool IsDirty = false;
-        private bool IsRegionsChanged = false;
-        private Region CentralRegion = default;
-        private IEnumerable<Region> Regions = Enumerable.Empty<Region>();
 
-        private MeshPolygoned ReferenceMesh = default;
+        private readonly ObservableValue<Region> CurrentRegion = new();
+        private readonly MeshPolygoned ReferenceMesh = MeshPolygoned.GetCube();
 
         //TODO Invalidate cache with time
         private readonly Dictionary<Region, Mesh> MeshesPool = new();
+        private readonly List<MeshFilter> CurrentViews = new();
 
         private SimplePool<MeshFilter, Mesh> ViewsPool;
 
-        private List<MeshFilter> CurrentViews = new();
-
         protected override void AwakeBeforeDestroy()
         {
-            ReferenceMesh ??= MeshPolygoned.GetCube();
-
             ViewsPool = new(CreateView, OnGetView, OnReturnView);
 
             Center.Subscribe(InvalidateCache).While(this);
@@ -117,6 +166,8 @@ namespace SpaceFox
             Observer.Position.Subscribe(SetDirty).While(this);
             Self.Position.Subscribe(SetDirty).While(this);
             Self.Rotation.Subscribe(SetDirty).While(this);
+
+            CurrentRegion.Subscribe(RefillMeshFilters, false).While(this);
 
             Observer.SetUpdateProvider(UpdateProxy.Update).While(this);
             Self.SetUpdateProvider(UpdateProxy.Update).While(this);
@@ -159,12 +210,6 @@ namespace SpaceFox
                 IsDirty = false;
                 CheckRegion();
             }
-
-            if (IsRegionsChanged)
-            {
-                IsRegionsChanged = false;
-                RefillMeshFilters();
-            }
         }
 
         private void CheckRegion()
@@ -172,19 +217,7 @@ namespace SpaceFox
             var observerPositionInLocalSpace = Self.Value.InverseTransformPoint(Observer.Position.Value);
             var vectorToCenter = observerPositionInLocalSpace - Center.Value;
             var polygonIndex = ReferenceMesh.GetNearestPolygonIndex(vectorToCenter);
-            var region = GetRegion(polygonIndex, vectorToCenter);
-
-            if (CentralRegion == region)
-                return;
-
-            var nearRegions = ReferenceMesh
-                .GetPolygonNeighbours(polygonIndex)
-                .Select(polygon => GetRegion(polygon, vectorToCenter))
-                .SelectMany(region => region.GetSelfAndNeighbours());
-
-            IsRegionsChanged = true;
-            CentralRegion = region;
-            Regions = CentralRegion.GetSelfAndNeighbours().Concat(nearRegions);
+            CurrentRegion.Value = GetRegion(polygonIndex, vectorToCenter);
         }
 
         private Region GetRegion(int polygonIndex, Vector3 vectorToCenter)
@@ -209,10 +242,11 @@ namespace SpaceFox
             return region;
         }
 
-        //TODO Optimise that
-        private void RefillMeshFilters()
+        //TODO Optimise that (collection intersection and substract)
+        private void RefillMeshFilters(Region region)
         {
-            var meshes = GetMeshes().ToList();
+            var regions = region.GetSelfAndNeighbours(ReferenceMesh);
+            var meshes = regions.Select(GetMesh).ToList();
             var newViews = new List<MeshFilter>(meshes.Count);
 
             foreach (var view in CurrentViews)
@@ -231,11 +265,9 @@ namespace SpaceFox
             foreach (var mesh in meshes)
                 newViews.Add(ViewsPool.Get(mesh));
 
-            CurrentViews = newViews;
+            CurrentViews.Clear();
+            CurrentViews.AddRange(newViews);
         }
-
-        private IEnumerable<Mesh> GetMeshes()
-            => Regions.Select(GetMesh);
 
         private Mesh GetMesh(Region region)
         {
