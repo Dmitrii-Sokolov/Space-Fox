@@ -12,28 +12,6 @@ namespace SpaceFox
     {
         private readonly struct Region : IEquatable<Region>
         {
-            private static readonly Vector2Int[] Neighbours = new Vector2Int[]
-            {
-                new( 1,  0),
-                new( 0, -1),
-                new(-1,  0),
-                new( 0,  1),
-                new( 0,  0),
-            };
-
-            //private static readonly Vector2Int[] Neighbours = new Vector2Int[]
-            //{
-            //    new( 0,  0),
-            //    new( 0,  1),
-            //    new( 1,  1),
-            //    new( 1,  0),
-            //    new( 1, -1),
-            //    new( 0, -1),
-            //    new(-1, -1),
-            //    new(-1,  0),
-            //    new(-1,  1)
-            //};
-
             public readonly int PolygonIndex { get; }
             public readonly int Divider { get; }
             public readonly int SubregionX { get; }
@@ -51,15 +29,16 @@ namespace SpaceFox
 
             public IEnumerable<Region> GetSelfAndNeighbours(MeshPolygoned referenceMesh)
             {
-                for (var nIndex = 0; nIndex < Neighbours.Length; nIndex++)
+                yield return this;
+
+                for (var nIndex = 0; nIndex < QuadVector3.Neighbours.Length; nIndex++)
                 {
-                    var neighbourOffset = Neighbours[nIndex];
+                    var neighbourOffset = QuadVector3.Neighbours[nIndex];
 
                     if (IsValidNeighbourOffset(neighbourOffset))
                     {
                         yield return CreateNeighbour(neighbourOffset);
                     }
-                    //TODO Pass around vertex
                     //!!Warning nIndex refers to Neighbours array order
                     else if (referenceMesh.TryGetAdjacentPolygonIndex(
                             PolygonIndex,
@@ -68,6 +47,50 @@ namespace SpaceFox
                             out var edgeIndexShift))
                     {
                         yield return CreateNeighbour(neighbourOffset, adjacentPolygonIndex, edgeIndexShift);
+                    }
+                }
+
+                for (var nIndex0 = 0; nIndex0 < QuadVector3.Neighbours.Length; nIndex0++)
+                {
+                    var nIndex1 = (nIndex0 + 1) % QuadVector3.Neighbours.Length;
+                    var neighbourOffset0 = QuadVector3.Neighbours[nIndex0];
+                    var neighbourOffset1 = QuadVector3.Neighbours[nIndex1];
+
+                    if (IsValidNeighbourOffset(neighbourOffset0) && IsValidNeighbourOffset(neighbourOffset1))
+                    {
+                        //n0pol == this == n1pol  => inner case
+                        yield return CreateNeighbour(neighbourOffset0 + neighbourOffset1);
+                    }
+                    else if (!IsValidNeighbourOffset(neighbourOffset0) && IsValidNeighbourOffset(neighbourOffset1))
+                    {
+                        //n0pol != this == n1pol  => edge case
+                        if (referenceMesh.TryGetAdjacentPolygonIndex(
+                            PolygonIndex,
+                            nIndex0,
+                            out var adjacentPolygonIndex,
+                            out var edgeIndexShift))
+                        {
+                            yield return CreateNeighbour(neighbourOffset0 + neighbourOffset1, adjacentPolygonIndex, edgeIndexShift);
+                        }
+
+                        yield return CreateNeighbour(neighbourOffset0 + neighbourOffset1);
+                    }
+                    else if (IsValidNeighbourOffset(neighbourOffset0) && !IsValidNeighbourOffset(neighbourOffset1))
+                    {
+                        //n0pol == this != n1pol  => edge case
+                        if (referenceMesh.TryGetAdjacentPolygonIndex(
+                            PolygonIndex,
+                            nIndex1,
+                            out var adjacentPolygonIndex,
+                            out var edgeIndexShift))
+                        {
+                            yield return CreateNeighbour(neighbourOffset0 + neighbourOffset1, adjacentPolygonIndex, edgeIndexShift);
+                        }
+                    }
+                    else
+                    {
+                        //TODO Pass around vertex
+                        //Something unusual
                     }
                 }
 

@@ -7,6 +7,14 @@ namespace SpaceFox
 {
     public class QuadVector3 : List<Vector3>
     {
+        public static readonly Vector2Int[] Neighbours = new Vector2Int[]
+        {
+            new( 1,  0),
+            new( 0, -1),
+            new(-1,  0),
+            new( 0,  1),
+        };
+
         public Vector3 RightTop => this[0];
         public Vector3 RightBottom => this[1];
         public Vector3 LeftBottom => this[2];
