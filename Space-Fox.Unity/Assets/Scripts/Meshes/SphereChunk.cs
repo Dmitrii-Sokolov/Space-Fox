@@ -89,8 +89,18 @@ namespace SpaceFox
                     }
                     else
                     {
+                        if (!referenceMesh.TryGetAdjacentPolygonIndex(PolygonIndex, nIndex0, out var neighbour0, out var _))
+                            neighbour0 = -1;
+
+                        if (!referenceMesh.TryGetAdjacentPolygonIndex(PolygonIndex, nIndex1, out var neighbour1, out var _))
+                            neighbour1 = -1;
+
                         //TODO Pass around vertex
-                        //Something unusual
+                        foreach (var (index, edgeIndexShift) in referenceMesh.GetAllPolygonsByVertex(PolygonIndex, nIndex1))
+                        {
+                            if (index != PolygonIndex && index != neighbour0 && index != neighbour1)
+                                yield return CreateNeighbour(neighbourOffset0 + neighbourOffset1, index, edgeIndexShift);
+                        }
                     }
                 }
 
@@ -169,7 +179,7 @@ namespace SpaceFox
         private bool IsDirty = false;
 
         private readonly ObservableValue<Region> CurrentRegion = new();
-        private readonly MeshPolygoned ReferenceMesh = MeshPolygoned.GetCube();
+        private readonly MeshPolygoned ReferenceMesh = MeshPolygoned.GetCube().Subdivide();
 
         //TODO Invalidate cache with time
         private readonly Dictionary<Region, Mesh> MeshesPool = new();

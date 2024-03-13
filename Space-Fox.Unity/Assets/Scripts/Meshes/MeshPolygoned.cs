@@ -216,6 +216,27 @@ namespace SpaceFox
             return false;
         }
 
+        //TODO Optimise that by storing every edge owners, my by half-edge structure
+        public IEnumerable<(int AdjacentPolygonIndex, int EdgeIndexShift)> GetAllPolygonsByVertex(int referencePolygon, int polygonEdge)
+        {
+            var vertex = Polygons[referencePolygon][polygonEdge].GetFirstVertexIndex(Edges);
+
+            for (var polygonIndex = 0; polygonIndex < Polygons.Count; polygonIndex++)
+            {
+                var polygon = Polygons[polygonIndex];
+
+                for (var edgeIndex = 0; edgeIndex < polygon.Count; edgeIndex++)
+                {
+                    var edge = polygon[edgeIndex];
+
+                    if (vertex == edge.GetFirstVertexIndex(Edges))
+                        yield return (polygonIndex, polygonEdge - edgeIndex);
+                }
+            }
+
+            yield break;
+        }
+
         public float GetDistanceToPolygonPlane(int polygonIndex, Vector3 point)
             => Vector3.SqrMagnitude(GetPolygonCenter(polygonIndex) - point);
 
