@@ -134,6 +134,35 @@ namespace SpaceFox
             return (Vertices.ToArray(), trianglesClassic.ToArray());
         }
 
+        public MeshPolygoned Triangulate()
+        {
+            var newPolygons = new List<Polygon>();
+
+            foreach (var polygon in Polygons)
+            {
+                var lastEdge = polygon[^1];
+                var lastVertex = lastEdge.GetFirstVertexIndex(Edges);
+                for (var edgeIndex = 0; edgeIndex < polygon.Count - 3; edgeIndex++)
+                {
+                    var edgeLink = polygon[edgeIndex];
+                    var newEdge = new Edge(edgeLink.GetLastVertexIndex(Edges), lastVertex);
+                    var newEdgeLink = new EdgeLink(Edges.AddAndReturnIndex(newEdge));
+                    var newPolygon = new Polygon(lastEdge, edgeLink, newEdgeLink);
+
+                    lastEdge = newEdgeLink.Reverse();
+                    newPolygons.Add(newPolygon);
+                }
+
+                var lastPolygon = new Polygon(lastEdge, polygon[^3], polygon[^2]);
+                newPolygons.Add(lastPolygon);
+            }
+
+            Polygons.Clear();
+            Polygons.AddRange(newPolygons);
+
+            return this;
+        }
+
         public MeshPolygoned MakeRibbed()
         {
             var verticesCount = Polygons.Sum(p => p.Count);
@@ -273,7 +302,7 @@ namespace SpaceFox
 
         public MeshPolygoned Subdivide(int iterations, Func<Vector3, Vector3> vertexTransform = null)
         {
-            for (var i = 0; i < iterations; i++)
+            for (; 0 < iterations; iterations--)
                 Subdivide(vertexTransform);
 
             return this;

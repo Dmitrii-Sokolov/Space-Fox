@@ -17,8 +17,14 @@ namespace SpaceFox
             Reversed = reversed;
         }
 
+        public readonly EdgeLink Reverse()
+            => new(Index, !Reversed);
+
         public readonly int GetFirstVertexIndex(List<Edge> edges)
             => Reversed ? edges[Index].Vertex1 : edges[Index].Vertex0;
+
+        public readonly int GetLastVertexIndex(List<Edge> edges)
+            => !Reversed ? edges[Index].Vertex1 : edges[Index].Vertex0;
 
         public override readonly bool Equals(object obj)
             => obj is EdgeLink edge && this == edge;
