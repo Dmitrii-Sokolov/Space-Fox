@@ -95,6 +95,9 @@ namespace SpaceFox
                         if (!referenceMesh.TryGetAdjacentPolygonIndex(PolygonIndex, nIndex1, out var neighbour1, out var _))
                             neighbour1 = -1;
 
+                        //TODO Compare size of PolygonedMesh and HalfEdge
+                        //TODO Check with holes
+                        //TODO Check with 4+ neighbours
                         //TODO Pass around vertex
                         foreach (var (index, edgeIndexShift) in referenceMesh.GetAllPolygonsByVertex(PolygonIndex, nIndex1))
                         {
@@ -179,7 +182,7 @@ namespace SpaceFox
         private bool IsDirty = false;
 
         private readonly ObservableValue<Region> CurrentRegion = new();
-        private readonly MeshPolygoned ReferenceMesh = MeshPolygoned.GetCube().Subdivide();
+        private readonly MeshPolygoned ReferenceMesh = MeshPolygoned.GetCube();
 
         //TODO Invalidate cache with time
         private readonly Dictionary<Region, Mesh> MeshesPool = new();
@@ -249,23 +252,72 @@ namespace SpaceFox
         {
             var observerPositionInLocalSpace = Self.Value.InverseTransformPoint(Observer.Position.Value);
             var vectorToCenter = observerPositionInLocalSpace - Center.Value;
-            var polygonIndex = ReferenceMesh.GetNearestPolygonIndex(vectorToCenter);
-            CurrentRegion.Value = GetRegion(polygonIndex, vectorToCenter);
+
+            CurrentRegion.Value = GetRegion(vectorToCenter);
         }
 
-        private Region GetRegion(int polygonIndex, Vector3 vectorToCenter)
+        //This works only if vectors aren't complanar
+        //TODO Make a solution for planar case
+        private Region GetRegion(Vector3 vectorToCenter)
         {
+            var polygonIndex = ReferenceMesh.GetNearestPolygonIndex(vectorToCenter);
             var minSize = ReferenceMesh.GetMinSideSize(polygonIndex) * Radius.Value;
-            var divider = 1 << Mathf.Max(Mathf.RoundToInt(Mathf.Log(minSize / AreaSize.Value, 2)), 0);
+            var dividerPower = Mathf.Max(Mathf.RoundToInt(Mathf.Log(minSize / AreaSize.Value, 2)), 0);
 
+            var divider = 1 << dividerPower;
             var sector = ReferenceMesh.GetQuad(polygonIndex);
 
-            //Will try to find barycentric coordinates of vectorToSurface in this orthant
-            var x = DecompositeByPlanes(vectorToCenter, sector.LeftNormal, sector.RightNormal);
-            var xInt = Mathf.FloorToInt(x * divider);
+            var xInt = 0;
+            var yInt = 0;
 
-            var y = DecompositeByPlanes(vectorToCenter, sector.BottomNormal, sector.TopNormal);
-            var yInt = Mathf.FloorToInt(y * divider);
+            if (Vector3.Dot(vectorToCenter, sector.LeftNormal) > 0 &&
+                Vector3.Dot(vectorToCenter, sector.RightNormal) < 0 &&
+                Vector3.Dot(vectorToCenter, sector.BottomNormal) > 0 &&
+                Vector3.Dot(vectorToCenter, sector.TopNormal) < 0)
+            {
+                for (var d = 0; d < dividerPower; d++)
+                {
+                    var rightMedian = Vector3.Slerp(sector.RightTop, sector.RightBottom, 0.5f);
+                    var bottomMedian = Vector3.Slerp(sector.RightBottom, sector.LeftBottom, 0.5f);
+                    var leftMedian = Vector3.Slerp(sector.LeftBottom, sector.LeftTop, 0.5f);
+                    var topMedian = Vector3.Slerp(sector.LeftTop, sector.RightTop, 0.5f);
+
+                    var verticalNormal = Vector3.Cross(bottomMedian, topMedian);
+                    var horizontalNormal = Vector3.Cross(rightMedian, leftMedian);
+
+                    var isRight = Vector3.Dot(vectorToCenter, verticalNormal) > 0;
+                    var isTop = Vector3.Dot(vectorToCenter, horizontalNormal) > 0;
+
+                    if (isRight)
+                    {
+                        sector.LeftTop = topMedian;
+                        sector.LeftBottom = bottomMedian;
+                    }
+                    else
+                    {
+                        sector.RightTop = topMedian;
+                        sector.RightBottom = bottomMedian;
+                    }
+
+                    if (isTop)
+                    {
+                        sector.LeftBottom = leftMedian;
+                        sector.RightBottom = rightMedian;
+                    }
+                    else
+                    {
+                        sector.LeftTop = leftMedian;
+                        sector.RightTop = rightMedian;
+                    }
+
+                    xInt = 2 * xInt + (isRight ? 1 : 0);
+                    yInt = 2 * yInt + (isTop ? 1 : 0);
+                }
+            }
+            else
+            {
+                Debug.LogWarning("Vector is outside the polygon");
+            }
 
             var maxSize = ReferenceMesh.GetMaxSideSize(polygonIndex) * Radius.Value;
             var currentTrianlgeSide = maxSize / divider;
@@ -311,36 +363,6 @@ namespace SpaceFox
             }
 
             return mesh;
-        }
-
-        //This works only if vectors normal0 and normal1 aren't complanar
-        //TODO Make a solution for planar case
-        private static float DecompositeByPlanes(Vector3 vector, Vector3 normal0, Vector3 normal1)
-        {
-            //Slice is the plane, that is perpendicular to two basis planes
-            var sliceNormal = Vector3.Cross(normal0, normal1).normalized;
-
-            //Directions of the intersections of planes with slice
-            var direction0 = Vector3.Cross(normal0, sliceNormal);
-            var direction1 = Vector3.Cross(normal1, sliceNormal);
-            var vectorProjectionToSlice = vector - sliceNormal * Vector3.Dot(sliceNormal, vector);
-            var (a, b) = DecompositeByBasis(vectorProjectionToSlice, direction0, direction1);
-
-            return b / (a + b);
-        }
-
-        //Solving: vector = X * baseA + Y * baseB
-        private static (float X, float Y) DecompositeByBasis(Vector3 vector, Vector3 baseA, Vector3 baseB)
-        {
-            //Using Gaussian elimination method
-            var ab = Vector3.Dot(baseA, baseB);
-            var a2 = Vector3.Dot(baseA, baseA);
-            var b2 = Vector3.Dot(baseB, baseB);
-            var va = Vector3.Dot(vector, baseA);
-            var vb = Vector3.Dot(vector, baseB);
-            var y = (vb - va * ab / a2) / (b2 - ab * ab / a2);
-            var x = (va - y * ab) / a2;
-            return (x, y);
         }
 
         private static Mesh GenerateMesh(Region region, MeshPolygoned reference, Vector3 center, float radius)

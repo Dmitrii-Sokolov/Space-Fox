@@ -15,10 +15,29 @@ namespace SpaceFox
             new( 0,  1),
         };
 
-        public Vector3 RightTop => this[0];
-        public Vector3 RightBottom => this[1];
-        public Vector3 LeftBottom => this[2];
-        public Vector3 LeftTop => this[3];
+        public Vector3 RightTop
+        {
+            get => this[0];
+            set => this[0] = value;
+        }
+
+        public Vector3 RightBottom
+        {
+            get => this[1];
+            set => this[1] = value;
+        }
+
+        public Vector3 LeftBottom
+        {
+            get => this[2];
+            set => this[2] = value;
+        }
+
+        public Vector3 LeftTop
+        {
+            get => this[3];
+            set => this[3] = value;
+        }
 
         public Vector3 LeftNormal => Vector3.Cross(LeftBottom, LeftTop);
         public Vector3 RightNormal => Vector3.Cross(RightBottom, RightTop);
