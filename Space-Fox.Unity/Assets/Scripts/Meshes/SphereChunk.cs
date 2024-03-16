@@ -123,6 +123,9 @@ namespace SpaceFox
                 SubregionY == other.SubregionY &&
                 Subdivider == other.Subdivider;
 
+            public override string ToString()
+                => $"({SubregionX}, {SubregionY}), Divider : {Divider},  Subdivider : {Subdivider}, PolygonIndex : {PolygonIndex}";
+
             public static bool operator ==(Region a, Region b)
                 => a.Equals(b);
 
@@ -323,8 +326,7 @@ namespace SpaceFox
             var currentTrianlgeSide = maxSize / divider;
             var subdivider = Mathf.RoundToInt(Mathf.Log(currentTrianlgeSide / TriangleSize.Value, 2));
 
-            var region = new Region(polygonIndex, divider, xInt, yInt, subdivider);
-            return region;
+            return new Region(polygonIndex, divider, xInt, yInt, subdivider);
         }
 
         //TODO Optimise that (collection intersection and substract)
@@ -370,11 +372,10 @@ namespace SpaceFox
             //TODO Generate whole sphere when far
             //TODO Add height noise
 
-            var divider = (float)region.Divider;
             var sector = reference.GetQuad(region.PolygonIndex);
 
-            sector.CutByX(region.SubregionX, divider, Vector3.Slerp);
-            sector.CutByY(region.SubregionY, divider, Vector3.Slerp);
+            sector.CutByX(region.SubregionX, region.Divider, Vector3.Slerp);
+            sector.CutByY(region.SubregionY, region.Divider, Vector3.Slerp);
 
             var mesh = MeshPolygoned.GetPolygon(sector);
             mesh.TransformVertices(GetRelativeHeight);

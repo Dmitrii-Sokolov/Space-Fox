@@ -51,12 +51,15 @@ namespace SpaceFox
                 throw new ArgumentException();
         }
 
-        public void CutByX(int x, float divider, Func<Vector3, Vector3, float, Vector3> lerp)
+        public void CutByX(int x, int divider, Func<Vector3, Vector3, float, Vector3> lerp)
         {
-            var v0 = lerp(LeftTop,    RightTop,    (x + 1) / divider);
-            var v1 = lerp(LeftBottom, RightBottom, (x + 1) / divider);
-            var v2 = lerp(LeftBottom, RightBottom,  x      / divider);
-            var v3 = lerp(LeftTop,    RightTop,     x      / divider);
+            var min = x / (float)divider;
+            var max = (x + 1) / (float)divider;
+
+            var v0 = lerp(LeftTop,    RightTop,    max);
+            var v1 = lerp(LeftBottom, RightBottom, max);
+            var v2 = lerp(LeftBottom, RightBottom, min);
+            var v3 = lerp(LeftTop,    RightTop,    min);
 
             this[0] = v0;
             this[1] = v1;
@@ -64,12 +67,15 @@ namespace SpaceFox
             this[3] = v3;
         }
 
-        public void CutByY(int y, float divider, Func<Vector3, Vector3, float, Vector3> lerp)
+        public void CutByY(int y, int divider, Func<Vector3, Vector3, float, Vector3> lerp)
         {
-            var v0 = lerp(RightBottom, RightTop, (y + 1) / divider);
-            var v1 = lerp(RightBottom, RightTop,  y      / divider);
-            var v2 = lerp(LeftBottom,  LeftTop,   y      / divider);
-            var v3 = lerp(LeftBottom,  LeftTop,  (y + 1) / divider);
+            var min = y / (float)divider;
+            var max = (y + 1) / (float)divider;
+
+            var v0 = lerp(RightBottom, RightTop, max);
+            var v1 = lerp(RightBottom, RightTop, min);
+            var v2 = lerp(LeftBottom,  LeftTop,  min);
+            var v3 = lerp(LeftBottom,  LeftTop,  max);
 
             this[0] = v0;
             this[1] = v1;
