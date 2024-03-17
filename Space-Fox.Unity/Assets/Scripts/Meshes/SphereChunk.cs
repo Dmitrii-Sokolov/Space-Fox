@@ -291,30 +291,13 @@ namespace SpaceFox
                     var isRight = Vector3.Dot(vectorToCenter, verticalNormal) > 0;
                     var isTop = Vector3.Dot(vectorToCenter, horizontalNormal) > 0;
 
-                    if (isRight)
-                    {
-                        sector.LeftTop = topMedian;
-                        sector.LeftBottom = bottomMedian;
-                    }
-                    else
-                    {
-                        sector.RightTop = topMedian;
-                        sector.RightBottom = bottomMedian;
-                    }
+                    var xBit = isRight ? 1 : 0;
+                    var yBit = isTop ? 1 : 0;
 
-                    if (isTop)
-                    {
-                        sector.LeftBottom = leftMedian;
-                        sector.RightBottom = rightMedian;
-                    }
-                    else
-                    {
-                        sector.LeftTop = leftMedian;
-                        sector.RightTop = rightMedian;
-                    }
+                    sector.Cut(xBit, yBit, 2, Vector3.Slerp);
 
-                    xInt = 2 * xInt + (isRight ? 1 : 0);
-                    yInt = 2 * yInt + (isTop ? 1 : 0);
+                    xInt = 2 * xInt + xBit;
+                    yInt = 2 * yInt + yBit;
                 }
             }
             else
@@ -374,8 +357,7 @@ namespace SpaceFox
 
             var sector = reference.GetQuad(region.PolygonIndex);
 
-            sector.CutByX(region.SubregionX, region.Divider, Vector3.Slerp);
-            sector.CutByY(region.SubregionY, region.Divider, Vector3.Slerp);
+            sector.Cut(region.SubregionX, region.SubregionY, region.Divider, Vector3.Slerp);
 
             var mesh = MeshPolygoned.GetPolygon(sector);
             mesh.TransformVertices(GetRelativeHeight);

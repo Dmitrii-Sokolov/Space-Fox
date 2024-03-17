@@ -51,6 +51,12 @@ namespace SpaceFox
                 throw new ArgumentException();
         }
 
+        public void Cut(int x, int y, int divider, Func<Vector3, Vector3, float, Vector3> lerp)
+        {
+            CutByX(x, divider, lerp);
+            CutByY(y, divider, lerp);
+        }
+
         public void CutByX(int x, int divider, Func<Vector3, Vector3, float, Vector3> lerp)
         {
             var min = x / (float)divider;
