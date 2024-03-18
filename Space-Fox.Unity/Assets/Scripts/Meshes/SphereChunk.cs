@@ -183,11 +183,12 @@ namespace SpaceFox
         [SerializeField] private MeshFilter ViewPrefab = default;
 
         private bool IsDirty = false;
+        private bool RedrawIsNeeded = false;
 
         private readonly ObservableValue<Region> CurrentRegion = new();
         private readonly MeshPolygoned ReferenceMesh = MeshPolygoned.GetCube();
 
-        //TODO Invalidate cache with time
+        //TODO Invalidate cache with time (for memory saving)
         private readonly Dictionary<Region, Mesh> MeshesPool = new();
         private readonly List<MeshFilter> CurrentViews = new();
 
@@ -195,13 +196,34 @@ namespace SpaceFox
 
         protected override void AwakeBeforeDestroy()
         {
+            //This can be calculated with node tree, root -- view affected value
+            //Its children -- values that affecting it
+            //When value changed, its node marked as 'dirty'
+            //Then, all its parents must be recalculated
+            //Also, it's necessary to check that there are no any cycles
+
+            //Center affects cache and all
+            //Radius affects  cache and all
+
+            //AreaSize affects Divider
+            //TriangleSize affects Subdivider
+            //Observer.Position affects PolygonIndex
+            //Self.Position affects PolygonIndex
+            //Self.Rotation affects PolygonIndex
+
+            //Region.PolygonIndex affects Divider, Subdivider
+            //Region.Divider affects RegionXY
+            //Region.RegionXY affects meshes
+            //Region.Subdivider affects meshes
+
             ViewsPool = new(CreateView, OnGetView, OnReturnView);
 
             Center.Subscribe(InvalidateCache).While(this);
             Radius.Subscribe(InvalidateCache).While(this);
 
-            AreaSize.Subscribe(SetDirty).While(this);
-            TriangleSize.Subscribe(SetDirty).While(this);
+            AreaSize.Subscribe(SetForceRedraw).While(this);
+            TriangleSize.Subscribe(SetForceRedraw).While(this);
+
             Observer.Position.Subscribe(SetDirty).While(this);
             Self.Position.Subscribe(SetDirty).While(this);
             Self.Rotation.Subscribe(SetDirty).While(this);
@@ -236,14 +258,24 @@ namespace SpaceFox
         private void InvalidateCache()
         {
             MeshesPool.Clear();
-            SetDirty();
+            SetForceRedraw();
         }
 
         private void SetDirty()
             => IsDirty = true;
 
+        private void SetForceRedraw()
+            => RedrawIsNeeded = true;
+
         private void OnLateUpdate()
         {
+            if (RedrawIsNeeded)
+            {
+                RedrawIsNeeded = false;
+                IsDirty = false;
+                ForceRedraw();
+            }
+
             if (IsDirty)
             {
                 IsDirty = false;
@@ -253,10 +285,24 @@ namespace SpaceFox
 
         private void CheckRegion()
         {
+            var vectorToCenter = GetVectorToCenter();
+            var sector = GetSector(CurrentRegion.Value, ReferenceMesh);
+
+            if (!IsInside(vectorToCenter, sector))
+                CurrentRegion.Value = GetRegion(vectorToCenter);
+        }
+
+        private void ForceRedraw()
+        {
+            var vectorToCenter = GetVectorToCenter();
+            CurrentRegion.Value = GetRegion(vectorToCenter);
+        }
+
+        private Vector3 GetVectorToCenter()
+        {
             var observerPositionInLocalSpace = Self.Value.InverseTransformPoint(Observer.Position.Value);
             var vectorToCenter = observerPositionInLocalSpace - Center.Value;
-
-            CurrentRegion.Value = GetRegion(vectorToCenter);
+            return vectorToCenter;
         }
 
         //This works only if vectors aren't complanar
@@ -273,10 +319,7 @@ namespace SpaceFox
             var xInt = 0;
             var yInt = 0;
 
-            if (Vector3.Dot(vectorToCenter, sector.LeftNormal) > 0 &&
-                Vector3.Dot(vectorToCenter, sector.RightNormal) < 0 &&
-                Vector3.Dot(vectorToCenter, sector.BottomNormal) > 0 &&
-                Vector3.Dot(vectorToCenter, sector.TopNormal) < 0)
+            if (IsInside(vectorToCenter, sector))
             {
                 for (var d = 0; d < dividerPower; d++)
                 {
@@ -302,6 +345,7 @@ namespace SpaceFox
             }
             else
             {
+                //TODO This must be implemented
                 Debug.LogWarning("Vector is outside the polygon");
             }
 
@@ -350,15 +394,18 @@ namespace SpaceFox
             return mesh;
         }
 
+        private static bool IsInside(Vector3 vectorToCenter, QuadVector3 sector)
+            => Vector3.Dot(vectorToCenter, sector.LeftNormal) > 0 &&
+            Vector3.Dot(vectorToCenter, sector.RightNormal) < 0 &&
+            Vector3.Dot(vectorToCenter, sector.BottomNormal) > 0 &&
+            Vector3.Dot(vectorToCenter, sector.TopNormal) < 0;
+        
         private static Mesh GenerateMesh(Region region, MeshPolygoned reference, Vector3 center, float radius)
         {
             //TODO Generate whole sphere when far
             //TODO Add height noise
 
-            var sector = reference.GetQuad(region.PolygonIndex);
-
-            sector.Cut(region.SubregionX, region.SubregionY, region.Divider, Vector3.Slerp);
-
+            var sector = GetSector(region, reference);
             var mesh = MeshPolygoned.GetPolygon(sector);
             mesh.TransformVertices(GetRelativeHeight);
             mesh.Subdivide(region.Subdivider, GetRelativeHeight);
@@ -368,6 +415,13 @@ namespace SpaceFox
             result.ApplyData(mesh);
 
             return result;
+        }
+
+        private static QuadVector3 GetSector(Region region, MeshPolygoned reference)
+        {
+            var sector = reference.GetQuad(region.PolygonIndex);
+            sector.Cut(region.SubregionX, region.SubregionY, region.Divider, Vector3.Slerp);
+            return sector;
         }
 
         private static Vector3 GetRelativeHeight(Vector3 direction)
