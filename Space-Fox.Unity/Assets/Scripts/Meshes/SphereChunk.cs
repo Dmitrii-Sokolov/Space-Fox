@@ -96,9 +96,6 @@ namespace SpaceFox
                             neighbour1 = -1;
 
                         //TODO Compare size of PolygonedMesh and HalfEdge
-                        //TODO Check with holes
-                        //TODO Check with 4+ neighbours
-                        //TODO Pass around vertex
                         foreach (var (index, edgeIndexShift) in referenceMesh.GetAllPolygonsByVertex(PolygonIndex, nIndex1))
                         {
                             if (index != PolygonIndex && index != neighbour0 && index != neighbour1)
@@ -146,7 +143,6 @@ namespace SpaceFox
 
             private Region CreateNeighbour(Vector2Int neighbourOffset, int adjacentPolygonIndex, int edgeIndexShift)
             {
-                //TODO Add corners' quads
                 //!!Warning this formulas refers to Quad inner structure
                 var x = (SubregionX + neighbourOffset.x + Divider) % Divider;
                 var y = (SubregionY + neighbourOffset.y + Divider) % Divider;
