@@ -220,9 +220,9 @@ namespace SpaceFox
             AreaSize.Subscribe(SetForceRedraw).While(this);
             TriangleSize.Subscribe(SetForceRedraw).While(this);
 
-            Observer.Position.Subscribe(SetDirty).While(this);
-            Self.Position.Subscribe(SetDirty).While(this);
-            Self.Rotation.Subscribe(SetDirty).While(this);
+            Observer.Position.Subscribe(OnSpatialChange).While(this);
+            Self.Position.Subscribe(OnSpatialChange).While(this);
+            Self.Rotation.Subscribe(OnSpatialChange).While(this);
 
             CurrentRegion.Subscribe(RefillMeshFilters, false).While(this);
 
@@ -257,8 +257,19 @@ namespace SpaceFox
             SetForceRedraw();
         }
 
-        private void SetDirty()
-            => IsDirty = true;
+        private void OnSpatialChange()
+        {
+            //TODO This can be optimised (this brokes caching)
+
+            var distance2 = GetVectorToCenter().sqrMagnitude;
+            AreaSize.Value = Radius.Value * Mathf.Sqrt(1 - Radius.Value * Radius.Value / distance2);
+
+            var desiredAngularSize = 0.1f;
+            var distanceToSurface = Mathf.Sqrt(distance2) - Radius.Value;
+            TriangleSize.Value = distanceToSurface * desiredAngularSize;
+
+            IsDirty = true;
+        }
 
         private void SetForceRedraw()
             => RedrawIsNeeded = true;
@@ -308,6 +319,9 @@ namespace SpaceFox
             var polygonIndex = ReferenceMesh.GetNearestPolygonIndex(vectorToCenter);
             var minSize = ReferenceMesh.GetMinSideSize(polygonIndex) * Radius.Value;
             var dividerPower = Mathf.Max(Mathf.RoundToInt(Mathf.Log(minSize / AreaSize.Value, 2)), 0);
+
+            //TODO Remove this
+            dividerPower = Mathf.Clamp(dividerPower, 0, 5);
 
             var divider = 1 << dividerPower;
             var sector = ReferenceMesh.GetQuad(polygonIndex);
