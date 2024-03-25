@@ -3,19 +3,21 @@ using Zenject;
 
 namespace SpaceFox
 {
+    [RequireComponent(typeof(Rigidbody))]
     public class GravityAgent : DisposableMonoBehaviour
     {
-        [SerializeField] private Rigidbody Rigidbody;
+        [SerializeField] private Vector3 InitialVelocity = default;
 
         [Inject] private readonly GravitySystem GravitySystem;
-
-        public Rigidbody Body => Rigidbody;
 
         protected override void AwakeBeforeDestroy()
         {
             base.AwakeBeforeDestroy();
 
-            GravitySystem.AddAgent(this).While(this);
+            var body = GetComponent<Rigidbody>();
+            body.velocity = InitialVelocity;
+
+            GravitySystem.AddAgent(body).While(this);
         }
     }
 }
