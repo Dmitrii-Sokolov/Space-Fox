@@ -10,6 +10,7 @@ namespace SpaceFox
             var debugCellsCount = 16f;
             var uv = normailised * debugCellsCount;
 
+
             var gridId = new Vector2(Mathf.Floor(uv.x), Mathf.Floor(uv.y));
             var gridUV = uv - gridId;
             //gridUV = quintic(gridUV);
