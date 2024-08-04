@@ -15,7 +15,7 @@ namespace SpaceFox
             base.AwakeBeforeDestroy();
 
             var body = GetComponent<Rigidbody>();
-            body.velocity = InitialVelocity;
+            body.linearVelocity = InitialVelocity;
 
             GravitySystem.AddAgent(body).While(this);
         }
