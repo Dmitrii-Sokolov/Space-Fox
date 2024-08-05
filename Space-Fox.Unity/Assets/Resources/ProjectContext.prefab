@@ -88,10 +88,22 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7edb2bfc149da264d9afa5b6382fcce0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  LoadingScreen: {fileID: 1546639984246800974, guid: c480d53c9aa8151448bbe9ddbe2f497f,
+    type: 3}
   MainScene:
     m_AssetGUID: 0fbcc10142d662e428b94469baae955b
     m_SubObjectName: 
+    m_SubObjectGUID: 
     m_SubObjectType: 
     m_EditorAssetChanged: 0
-  LoadingScreen: {fileID: 1546639984246800974, guid: c480d53c9aa8151448bbe9ddbe2f497f,
-    type: 3}
+  Scenes:
+  - m_AssetGUID: 56a0ced68f8e4c64e9a86d260e97663f
+    m_SubObjectName: 
+    m_SubObjectGUID: 
+    m_SubObjectType: 
+    m_EditorAssetChanged: 0
+  - m_AssetGUID: 4a5c86555adf92843be1f5afc3422994
+    m_SubObjectName: 
+    m_SubObjectGUID: 
+    m_SubObjectType: 
+    m_EditorAssetChanged: 0

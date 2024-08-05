@@ -130,7 +130,7 @@ GameObject:
   - component: {fileID: 280656491}
   - component: {fileID: 280656493}
   m_Layer: 0
-  m_Name: UI
+  m_Name: MainMenuUI
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -184,6 +184,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   UIDocument: {fileID: 280656491}
+  MenuContainer: Menu
+  StyleSheet: {fileID: 7433441132597879392, guid: 3967e9fafb30ac247a749ed69a54474b,
+    type: 3}
 --- !u!1 &1042130009
 GameObject:
   m_ObjectHideFlags: 0

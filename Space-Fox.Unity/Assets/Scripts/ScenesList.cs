@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 using UnityEngine.AddressableAssets;
 
 namespace SpaceFox
@@ -9,10 +10,12 @@ namespace SpaceFox
 
         public IReadOnlyList<AssetReference> Scenes { get; }
 
-        public ScenesList(AssetReference mainScene)
+        public ScenesList(AssetReference mainScene, params AssetReference[] otherScenes)
         {
             MainScene = mainScene;
-            Scenes = new List<AssetReference>() { mainScene };
+            var scenes = otherScenes.ToList();
+            scenes.Add(mainScene);
+            Scenes = scenes;
         }
     }
 }

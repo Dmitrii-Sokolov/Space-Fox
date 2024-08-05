@@ -1,4 +1,4 @@
-.button {
+Button {
     background-color: rgb(130, 154, 154);
     -unity-font-definition: resource('FlatSkin/Font/Roboto-Medium');
     font-size: 234%;
