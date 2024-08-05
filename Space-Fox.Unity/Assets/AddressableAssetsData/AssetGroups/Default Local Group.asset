@@ -14,12 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_GroupName: Default Local Group
   m_GUID: 1beeacce73bb8e440b9fb2c2a2c92437
-  m_SerializeEntries:
-  - m_GUID: 1e7cd1e9fa8d90c499d5413cc286cc40
-    m_Address: Assets/Scenes/Shaders.unity
-    m_ReadOnly: 0
-    m_SerializedLabels: []
-    FlaggedDuringContentUpdateRestriction: 0
+  m_SerializeEntries: []
   m_ReadOnly: 0
   m_Settings: {fileID: 11400000, guid: bcbb4d9f96e93f041ba458a68050f4ab, type: 2}
   m_SchemaSet:

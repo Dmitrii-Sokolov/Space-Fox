@@ -20,6 +20,16 @@ MonoBehaviour:
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 1e7cd1e9fa8d90c499d5413cc286cc40
+    m_Address: Assets/Scenes/Shaders.unity
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 3575a6326dade5844b935bf6a612ae10
+    m_Address: Assets/Joints1.unity
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 4a5c86555adf92843be1f5afc3422994
     m_Address: Assets/Scenes/Meshes.unity
     m_ReadOnly: 0
@@ -27,6 +37,11 @@ MonoBehaviour:
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 56a0ced68f8e4c64e9a86d260e97663f
     m_Address: Assets/Scenes/Gravity.unity
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: b3eebe07eb9f2164aa0d2a555a764e1e
+    m_Address: Assets/Joints0.unity
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
