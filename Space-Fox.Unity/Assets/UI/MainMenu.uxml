@@ -1,0 +1,13 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="False">
+    <Style src="project://database/Assets/UI/Stylesheet.uss?fileID=7433441132597879392&amp;guid=3967e9fafb30ac247a749ed69a54474b&amp;type=3#Stylesheet" />
+    <ui:VisualElement style="background-color: rgb(77, 65, 68); align-items: stretch; flex-grow: 1;">
+        <ui:VisualElement name="Title" style="height: 267px; font-size: 128px; color: rgb(255, 255, 255); -unity-text-align: middle-center; justify-content: center; align-self: auto; align-content: auto; align-items: center; flex-basis: 50%; -unity-font-definition: resource(&apos;FlatSkin/Font/Roboto-Light&apos;);">
+            <ui:Label text="Hello there" name="Label" />
+        </ui:VisualElement>
+        <ui:VisualElement name="Menu" style="flex-grow: 1; justify-content: space-around; align-items: center; padding-bottom: 5%;">
+            <ui:Button text="First" name="First" class="button" />
+            <ui:Button text="Second&#10;" name="Second" class="button" />
+            <ui:Button text="Third" name="Third" class="button" />
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>
