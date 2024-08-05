@@ -58,8 +58,11 @@ namespace SpaceFox
             LoadScene(ScenesList.MainScene);
         }
 
-        private async void LoadScene(AssetReference scene)
+        public async void LoadScene(AssetReference scene)
         {
+            if (scene == CurrentScene.Value)
+                return;
+
             LoadingState.Value = SceneLoadingState.Unloaded;
             CurrentScene.Value = scene;
 
