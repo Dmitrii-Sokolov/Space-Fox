@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using ModestTree;
+using System.Linq;
 
 namespace SpaceFox
 {
@@ -85,7 +85,7 @@ namespace SpaceFox
         public static TValue GetMax<TValue>(this IEnumerable<TValue> collection, Func<TValue, nuint> marker)
             => GetExtremum(collection, marker, (a, b) => a > b);
 
-        
+
         public static TValue GetMin<TValue>(this IEnumerable<TValue> collection, Func<TValue, float?> marker)
             => GetExtremum(collection, marker, (a, b) => a.HasValue && (!b.HasValue || a.Value < b.Value));
 
@@ -173,7 +173,7 @@ namespace SpaceFox
         {
             var maxElement = default(TValue);
 
-            if (!collection.IsEmpty())
+            if (collection.Any())
             {
                 using var enumerator = collection.GetEnumerator();
 

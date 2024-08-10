@@ -1,12 +1,5 @@
 {
   "dependencies": {
-    "com.svermeulen.extenject": {
-      "version": "https://github.com/starikcetin/Extenject.git#upm",
-      "depth": 0,
-      "source": "git",
-      "dependencies": {},
-      "hash": "8261b211687c43c40203c3e7dcdf9e0edfaf17a6"
-    },
     "com.unity.2d.sprite": {
       "version": "1.0.0",
       "depth": 0,
@@ -337,6 +330,13 @@
         "com.unity.modules.jsonserialize": "1.0.0"
       },
       "url": "https://packages.unity.com"
+    },
+    "jp.hadashikick.vcontainer": {
+      "version": "https://github.com/hadashiA/VContainer.git?path=VContainer/Assets/VContainer#1.16.2",
+      "depth": 0,
+      "source": "git",
+      "dependencies": {},
+      "hash": "fbc5b06545695cc964142f33aa2443e337b38d5c"
     },
     "com.unity.modules.accessibility": {
       "version": "1.0.0",

@@ -1,61 +1,35 @@
-﻿using UnityEngine.AddressableAssets;
+﻿using System.Linq;
+using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.AsyncOperations;
 using UnityEngine.ResourceManagement.ResourceProviders;
 using UnityEngine.SceneManagement;
-using Zenject;
+using VContainer;
+using VContainer.Unity;
 
 namespace SpaceFox
 {
-    public class SceneLoadSystem
+    public class SceneLoadSystem : IInitializable, ISceneLoadSystem
     {
-        public struct SceneLoadingState
-        {
-            public bool IsLoaded { get; set; }
-            public float Progress { get; set; }
-
-            public static SceneLoadingState Unloaded => new(false, 0f);
-            public static SceneLoadingState Loaded => new(true, 1f);
-
-            public SceneLoadingState(bool isLoaded, float progress) : this()
-            {
-                IsLoaded = isLoaded;
-                Progress = progress;
-            }
-
-            public static SceneLoadingState Loading(float state) => new(false, state);
-        }
-
         private AsyncOperationHandle<SceneInstance> SceneLoadHandle;
 
         [Inject] private readonly ScenesList ScenesList = default;
-        [Inject] private readonly UpdateProxy UpdateProxy = default;
+        [Inject] private readonly IUpdateProxy UpdateProxy = default;
 
-        private readonly ObservableValue<SceneLoadingState> LoadingState = new();
+        private readonly ObservableValue<SceneLoadState> LoadingState = new();
         private readonly ObservableValue<AssetReference> CurrentScene = new();
 
-        public IReadOnlyObservableValue<SceneLoadingState> State => LoadingState;
+        public IReadOnlyObservableValue<SceneLoadState> State => LoadingState;
         public IReadOnlyObservableValue<AssetReference> Scene => CurrentScene;
 
-        private bool Initialized => Scene.Value != null;
-
-        public void Initialize(Scene currentScene)
+        public void Initialize()
         {
-            if (Initialized)
-                return;
-
 #if UNITY_EDITOR
-            foreach (var scene in ScenesList.Scenes)
-            {
-                if (scene.editorAsset.name == currentScene.name)
-                {
-                    CurrentScene.Value = scene;
-                    LoadingState.Value = SceneLoadingState.Loaded;
-                    return;
-                }
-            }
+            var currentScene = SceneManager.GetActiveScene();
+            CurrentScene.Value = ScenesList.Scenes.FirstOrDefault(scene => scene.editorAsset.name == currentScene.name);
+            LoadingState.Value = SceneLoadState.Loaded;
+#else
+            LoadScene(ScenesList.Main);
 #endif
-
-            LoadScene(ScenesList.MainScene);
         }
 
         public async void LoadScene(AssetReference scene)
@@ -63,7 +37,7 @@ namespace SpaceFox
             if (scene == CurrentScene.Value)
                 return;
 
-            LoadingState.Value = SceneLoadingState.Unloaded;
+            LoadingState.Value = SceneLoadState.Unloaded;
             CurrentScene.Value = scene;
 
             if (SceneLoadHandle.IsValid())
@@ -71,12 +45,12 @@ namespace SpaceFox
 
             SceneLoadHandle = Addressables.LoadSceneAsync(scene);
             var loadingStateUpdater = UpdateProxy.Update.Subscribe(
-                () => LoadingState.Value = SceneLoadingState.Loading(SceneLoadHandle.PercentComplete));
+                () => LoadingState.Value = SceneLoadState.Loading(SceneLoadHandle.PercentComplete));
 
             await SceneLoadHandle.Task;
 
             loadingStateUpdater.Dispose();
-            LoadingState.Value = SceneLoadingState.Loaded;
+            LoadingState.Value = SceneLoadState.Loaded;
         }
     }
 }

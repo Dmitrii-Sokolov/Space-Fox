@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
-using Zenject;
+using VContainer;
+using VContainer.Unity;
 
 namespace SpaceFox
 {
@@ -9,7 +10,7 @@ namespace SpaceFox
         [SerializeField] private int XCount = default;
         [SerializeField] private int YCount = default;
 
-        [Inject] private readonly DiContainer DiContainer = default;
+        [Inject] private readonly IObjectResolver IObjectResolver = default;
 
         private void Awake()
         {
@@ -24,7 +25,7 @@ namespace SpaceFox
                         0,
                         transform.position.z + (y - 0.5f * (YCount - 1)) * PlaneTerrainQuadMeshChunk.ChunkSize);
 
-                    var go = DiContainer.InstantiatePrefab(
+                    var go = IObjectResolver.Instantiate(
                         PlaneTerrainMeshChunk,
                         position,
                         Quaternion.identity,

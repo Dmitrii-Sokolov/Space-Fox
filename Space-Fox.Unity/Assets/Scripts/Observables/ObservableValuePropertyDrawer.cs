@@ -1,5 +1,4 @@
 ﻿using System.Reflection;
-using ModestTree;
 using UnityEditor;
 using UnityEngine;
 
@@ -58,9 +57,8 @@ namespace SpaceFox
             var monoBehaviour = property.serializedObject.targetObject;
             var observableField = GetObservableField(property, monoBehaviour);
 
-            var hasAttribute = observableField.HasAttribute<SliderAttribute>();
-            slider = hasAttribute ? observableField.GetAttribute<SliderAttribute>() : default;
-            return hasAttribute;
+            slider = observableField.GetCustomAttribute<SliderAttribute>();
+            return slider != null;
         }
 
         private static void SetValue(SerializedProperty property, object value)

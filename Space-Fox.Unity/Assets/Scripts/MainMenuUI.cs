@@ -1,11 +1,11 @@
 ﻿using SpaceFox;
 using UnityEngine;
 using UnityEngine.UIElements;
-using Zenject;
+using VContainer;
 
 public class UI : MonoBehaviour
 {
-    [Inject] private readonly SceneLoadSystem SceneLoadSystem = default;
+    [Inject] private readonly ISceneLoadSystem SceneLoadSystem = default;
     [Inject] private readonly ScenesList ScenesList = default;
 
     [SerializeField] private UIDocument UIDocument = default;

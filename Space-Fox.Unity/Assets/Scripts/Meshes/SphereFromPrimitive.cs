@@ -1,5 +1,5 @@
 ﻿using UnityEngine;
-using Zenject;
+using VContainer;
 
 namespace SpaceFox
 {
@@ -9,7 +9,7 @@ namespace SpaceFox
     {
         private static readonly Vector3 Center = Vector3.zero;
 
-        [Inject] private readonly UpdateProxy UpdateProxy = default;
+        [Inject] private readonly IUpdateProxy UpdateProxy = default;
 
         [Slider(0, 7)]
         [SerializeField] private ObservableValue<int> RecursiveDepth = new();
@@ -68,6 +68,6 @@ namespace SpaceFox
         }
 
         private Vector3 GetLocalVertexPosition(Vector3 position)
-            => Center + Radius.Value * (position - Center).normalized;
+            => Center + (Radius.Value * (position - Center).normalized);
     }
 }

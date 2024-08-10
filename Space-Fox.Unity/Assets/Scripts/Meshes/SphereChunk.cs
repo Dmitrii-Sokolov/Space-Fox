@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
-using Zenject;
+using VContainer;
 
 namespace SpaceFox
 {
@@ -161,7 +161,7 @@ namespace SpaceFox
             }
         }
 
-        [Inject] private readonly UpdateProxy UpdateProxy = default;
+        [Inject] private readonly IUpdateProxy UpdateProxy = default;
 
         [SerializeField] private ObservableValue<Vector3> Center = default;
 
@@ -262,7 +262,7 @@ namespace SpaceFox
             //TODO This can be optimised (this brokes caching)
 
             var distance2 = GetVectorToCenter().sqrMagnitude;
-            AreaSize.Value = Radius.Value * Mathf.Sqrt(1 - Radius.Value * Radius.Value / distance2);
+            AreaSize.Value = Radius.Value * Mathf.Sqrt(1 - (Radius.Value * Radius.Value / distance2));
 
             var desiredAngularSize = 0.1f;
             var distanceToSurface = Mathf.Sqrt(distance2) - Radius.Value;
@@ -277,7 +277,7 @@ namespace SpaceFox
         private void OnLateUpdate()
         {
             //TODO Generate whole sphere when observer is far
-            
+
             if (RedrawIsNeeded)
             {
                 RedrawIsNeeded = false;
@@ -351,8 +351,8 @@ namespace SpaceFox
 
                     sector.Cut(xBit, yBit, 2, Vector3.Slerp);
 
-                    xInt = 2 * xInt + xBit;
-                    yInt = 2 * yInt + yBit;
+                    xInt = (2 * xInt) + xBit;
+                    yInt = (2 * yInt) + yBit;
                 }
             }
             else
@@ -411,7 +411,7 @@ namespace SpaceFox
             Vector3.Dot(vectorToCenter, sector.RightNormal) < 0 &&
             Vector3.Dot(vectorToCenter, sector.BottomNormal) > 0 &&
             Vector3.Dot(vectorToCenter, sector.TopNormal) < 0;
-        
+
         private static Mesh GenerateMesh(Region region, MeshPolygoned reference, Vector3 center, float radius)
         {
             var sector = GetSector(region, reference);
@@ -434,6 +434,6 @@ namespace SpaceFox
         }
 
         private static Vector3 GetRelativeHeight(Vector3 direction)
-            => direction.normalized * (PerlinNoise.GetRandomValue((Vector2)direction) * 0.1f + 1f);
+            => direction.normalized * ((PerlinNoise.GetRandomValue((Vector2)direction) * 0.1f) + 1f);
     }
 }

@@ -10,7 +10,7 @@ namespace SpaceFox
 
         private readonly List<Rigidbody> Bodies = new();
 
-        private GravitySystem(UpdateProxy updateProxy)
+        private GravitySystem(IUpdateProxy updateProxy)
         {
             updateProxy.FixedUpdate.Subscribe(OnFixedUpdate).While(this);
 

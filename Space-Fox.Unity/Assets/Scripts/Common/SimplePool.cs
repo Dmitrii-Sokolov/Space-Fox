@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using ModestTree;
 
 namespace SpaceFox
 {
@@ -21,7 +20,7 @@ namespace SpaceFox
 
         public TView Get(TData data)
         {
-            var result = Pool.IsEmpty() ? Factory() : Pool.Dequeue();
+            var result = Pool.Count == 0 ? Factory() : Pool.Dequeue();
             OnGet(result, data);
             return result;
         }

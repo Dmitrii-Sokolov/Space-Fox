@@ -2,7 +2,7 @@
 
 namespace SpaceFox
 {
-    public class UpdateProxy : UpdateProxyBase
+    public class UpdateProxy : UpdateProxyBase, IUpdateProxy
     {
         public ISubscriptionProvider Update => UpdateEvent;
         public ISubscriptionProvider LateUpdate => LateUpdateEvent;
