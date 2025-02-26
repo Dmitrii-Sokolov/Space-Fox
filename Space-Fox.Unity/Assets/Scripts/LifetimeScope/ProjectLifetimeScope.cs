@@ -17,5 +17,12 @@ namespace SpaceFox
             builder.RegisterEntryPoint<SceneLoadSystem>(Lifetime.Singleton).As<ISceneLoadSystem>();
             builder.RegisterComponentInNewPrefab(LoadingScreen, Lifetime.Singleton);
         }
+
+#if UNITY_EDITOR
+        private void OnValidate()
+        {
+            ScenesList.OnValidate();
+        }
+#endif
     }
 }

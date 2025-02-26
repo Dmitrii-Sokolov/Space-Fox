@@ -13,5 +13,14 @@ namespace SpaceFox
 
         public AssetReference Main => AllScenes.First();
         public IReadOnlyList<AssetReference> Scenes => AllScenes;
+
+#if UNITY_EDITOR
+        public void OnValidate()
+        {
+
+
+
+        }
+#endif
     }
 }
